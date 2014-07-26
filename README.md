@@ -2,6 +2,7 @@ SiteAlert
 =========
 
 SiteAlert, what are you waiting for?
+
 With this application you can monitor the changes of one or more web pages.
 
 Copyright (c) 2013, Matteo Pietro Dazzi <---> ilteoood
