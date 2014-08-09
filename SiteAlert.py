@@ -160,11 +160,34 @@ def numberReq(leng):
     return s
 
 def main():
+    c=1;n=len(sys.argv)
     while True:
-        x = choice()
+        x="";s="";dirs=os.listdir(path);leng= len(dirs)
+        if c<n:
+            arg=sys.argv[c]
+            if arg=="-a":
+                x=2
+            elif arg=="-b":
+                x=4
+                s="y"
+            elif arg=="-c":
+                x=4
+                s="n"
+            elif arg=="-d":
+                x=5
+            elif arg=="-e":
+                x=6
+            elif arg=="-f":
+                x=3
+            elif arg=="-h":
+                x=-1
+                print("Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
+            elif arg=="-s":
+                x=1
+            c+=1
+        if x=="":
+            x = choice()
         clearScreen()
-        dirs=os.listdir(path)
-        leng= len(dirs)
         if x==1:
             if leng!=0:
                 displaySites()
@@ -186,15 +209,16 @@ def main():
             else:
                 print ("You haven't checked any site.")
         elif x==4:
-            print ("Do you want to check it continually? (Y/n)")
-            s=input()
-            while len(s) == 0 or ( s[0] != 'n' and s[0] != 'y'):
-                if len(s) == 0:
-                    s="y"
-                    break
-                else:
-                    print ("Wrong input, do you want to check it continually? (Y/n)")
-                    s=input()
+            if s=="":
+                print ("Do you want to check it continually? (Y/n)")
+                s=input()
+                while len(s) == 0 or ( s[0] != 'n' and s[0] != 'y'):
+                    if len(s) == 0:
+                        s="y"
+                        break
+                    else:
+                        print ("Wrong input, do you want to check it continually? (Y/n)")
+                        s=input()
             while True:
                 if checkSite() or s!="y":
                     s="n"
