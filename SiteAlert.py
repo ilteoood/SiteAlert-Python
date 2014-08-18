@@ -51,7 +51,8 @@ def clearScreen():
 
 def visualizeMenu():
     clearScreen()
-    print("What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch a site from the config file\n4) Check sites\n5) Delete a site\n6) Exit")
+    print(
+        "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch a site from the config file\n4) Check sites\n5) Delete a site\n6) Exit")
 
 
 def choice():
@@ -105,7 +106,8 @@ def addSite(site, nameSite, mail):
         site = input() + "\n"
         print("Insert a name for the site: ")
         nameSite = input()
-        print("Insert the email where you want to be informed: (if you want to add other mail, separate them with \";\")")
+        print(
+            "Insert the email where you want to be informed: (if you want to add other mail, separate them with \";\")")
         mail = input() + "\n"
     try:
         urli = urllib.request.urlopen(stdURL(site))
@@ -176,34 +178,19 @@ def numberReq(leng):
 def main():
     c = 1; n = len(sys.argv)
     while True:
-        x = ""; s = ""; dirs = os.listdir(path); leng = len(dirs)
+        dirs = os.listdir(path); leng = len(dirs); s = ""
         if c < n:
             arg = sys.argv[c]
-            if arg == "-a":
-                x = 2
-            elif arg == "-b":
-                x = 4
-                s = "y"
-            elif arg == "-c":
-                x = 4
-                s = "n"
-            elif arg == "-d":
-                x = 5
-            elif arg == "-e":
-                x = 6
-            elif arg == "-f":
-                x = 3
-            elif arg == "-h":
-                x = -1
-                print("Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
-                input("Press enter to continue...")
-            elif arg == "-s":
-                x = 1
+            x = {"-a": 2, "-b": 4, "-c": 4, "-d": 5, "-e": 6, "-f": 3, "-h": 0, "-s": 1}.get(arg)
+            s = {"-b": "n", "-c": "y"}.get(arg)
             c += 1
-        if x == "":
+        else:
             x = choice()
         clearScreen()
-        if x == 1:
+        if x == 0:
+            print(
+                "Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
+        elif x == 1:
             if leng != 0:
                 displaySites()
             else:
@@ -254,6 +241,8 @@ def main():
                 print("You haven't checked any site!")
         elif x == 6:
             sys.exit(0)
+        else:
+            print("Unknown command: \"" + arg + "\"")
         input("Press enter to continue...")
 
 
