@@ -8,13 +8,20 @@ With this application you can monitor the changes of one or more web pages.
 Copyright (c) 2014, Matteo Pietro Dazzi <---> ilteoood
 All rights reserved.
 
-List of the usable arguments:
+List of the avaible arguments:
+
 -a -> add a new site
+
 -b -> continuous check
+
 -c -> check once
+
 -d -> delete a site
+
 -e -> exit
+
 -h -> print this list
+
 -s -> show the list of the sites
 
 ================================

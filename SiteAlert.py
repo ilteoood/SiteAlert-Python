@@ -26,20 +26,16 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = 'iLTeoooD'
 import urllib.request
+import hashlib
+import sqlite3
 import os
 import smtplib
-import shutil
 import time
 import sys
 import platform
 from os.path import expanduser
 
-
-def findHome():
-    return expanduser("~")
-
-
-path = findHome() + os.sep + "SiteAlert" + os.sep
+db = expanduser("~") + os.sep + "SiteAlert.db"
 
 
 def clearScreen():
@@ -51,8 +47,7 @@ def clearScreen():
 
 def visualizeMenu():
     clearScreen()
-    print(
-        "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch a site from the config file\n4) Check sites\n5) Delete a site\n6) Exit")
+    print("What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Delete a site\n6) Exit")
 
 
 def choice():
@@ -68,21 +63,11 @@ def choice():
         return 6
 
 
-def findDirs():
-    if not os.path.exists(path):
-        os.mkdir(path)
-    return os.listdir(path)
-
-
-def displaySites():
-    try:
-        i = 1
-        print("0) Exit")
-        for dir in os.listdir(findHome() + os.sep + "SiteAlert" + os.sep):
-            print(str(i) + ") " + dir)
-            i = i + 1
-    except OSError:
-        return
+def displaySites(dirs):
+    i = 1
+    for dir in dirs[0]:
+        print(str(i) + ") " + dir)
+        i = i + 1
 
 
 def stdURL(site):
@@ -91,36 +76,31 @@ def stdURL(site):
     return site
 
 
-def saveFile(path, site, mail, urli):
-    fw = open(path, "w")
-    fw.write(site)
-    fw.write(mail)
-    fw.write(str(urli.read()))
-    fw.close()
+def URLEncode(read):
+    return hashlib.md5(read).digest()
+
+
+def saveFile(f, nameSite, link, mail, hash):
+    try:
+        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (
+        nameSite, link, mail, hash))
+    except sqlite3.IntegrityError:
+        f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
+    f.commit()
     print("Site saved correctly!")
 
 
-def addSite(site, nameSite, mail):
-    if site == "" or nameSite == "" or mail == "":
-        print("Insert the link for the site: ")
-        site = input() + "\n"
-        print("Insert a name for the site: ")
-        nameSite = input()
-        print(
-            "Insert the email where you want to be informed: (if you want to add other mail, separate them with \";\")")
-        mail = input() + "\n"
+def addSite(f, nameSite, link, mail):
+    if link == "" or nameSite == "" or mail == "":
+        link = input("Insert the link for the site: ")
+        nameSite = input("Insert a name for the site: ")
+        mail = input(
+            "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
     try:
-        urli = urllib.request.urlopen(stdURL(site))
+        urli = urllib.request.urlopen(stdURL(link))
         responseCode = urli.getcode()
         if responseCode == 200:
-            pathMod = path + nameSite + os.sep
-            if not os.path.isdir(pathMod):
-                if os.makedirs(pathMod):
-                    print("I can't create the necessary directory!")
-                else:
-                    saveFile(pathMod + "sito.txt", site, mail, urli)
-            else:
-                saveFile(pathMod + "sito.txt", site, mail, urli)
+            saveFile(f, nameSite, link, mail, URLEncode(urli.read()))
         elif responseCode == 404:
             print("This page doesn't exist!")
         else:
@@ -129,13 +109,13 @@ def addSite(site, nameSite, mail):
         print("There is an error with the link.")
 
 
-def sendMail(site, dir, mail):
+def sendMail(nameSite, link, mail):
     try:
         server = smtplib.SMTP("smtp.gmail.com:587")
         server.starttls()
         server.login("SiteAlertMailNotification@gmail.com", "SiteAlertMailNotificatio")
-        subj = "The site \"" + dir + "\" has been changed!"
-        msg = "Subject: " + subj + "\n" + subj + "\nLink: " + site
+        subj = "The site \"" + nameSite + "\" has been changed!"
+        msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = mail.split(";")
         for address in mail:
             server.sendmail("SiteAlertMailNotification@gmail.com", address, msg)
@@ -144,32 +124,30 @@ def sendMail(site, dir, mail):
         print("Error with the e-mail destination address.")
 
 
-def checkSite():
-    list = os.listdir(path)
-    if len(list) != 0:
-        for dir in list:
-            pathMod = path + dir + os.sep + "sito.txt"
-            f = open(pathMod, "r");
-            site = f.readline()
-            mail = f.readline()
-            urli = urllib.request.urlopen(stdURL(site))
-            if f.read() == str(urli.read()):
+def checkSite(f, dirs):
+    if len(dirs) > 0:
+        for dir in dirs[0]:
+            query = f.execute("SELECT hash,link,mail FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
+            hash = query[0]
+            link = query[1]
+            mail = query[2]
+            linkx = urllib.request.urlopen(link)
+            if hash != URLEncode(linkx.read()):
                 print("The site \"" + dir + "\" hasn't been changed!")
             else:
                 print("The site \"" + dir + "\" has been changed!")
-                addSite(site, dir, mail)
-                sendMail(site, dir, mail)
-            f.close()
+                addSite(f, dir, link, mail)
+                sendMail(dir, link, mail)
     else:
         print("You haven't checked any site.")
         return True
     return False
 
 
-def numberReq(leng):
+def numberReq(leng, dirs):
     s = -1
-    displaySites()
-    while s < 0 or s > leng:
+    displaySites(dirs)
+    while s <= 0 or s > leng:
         print("Number of the site: ", )
         s = int(input())
     return s
@@ -177,8 +155,13 @@ def numberReq(leng):
 
 def main():
     c = 1; n = len(sys.argv)
+    if not os.path.isfile(db):
+        print("[WARNING]: No db found, creating a new one.")
+        sqlite3.connect(db).execute(
+            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`mail` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));").close()
+    f = sqlite3.connect(db)
     while True:
-        dirs = os.listdir(path); leng = len(dirs); s = ""
+        dirs = f.execute("SELECT name FROM SiteAlert").fetchall(); leng = len(dirs); s = ""
         if c < n:
             arg = sys.argv[c]
             x = {"-a": 2, "-b": 4, "-c": 4, "-d": 5, "-e": 6, "-f": 3, "-h": 0, "-s": 1}.get(arg)
@@ -188,41 +171,35 @@ def main():
             x = choice()
         clearScreen()
         if x == 0:
-            print(
-                "Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
+            print("Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
         elif x == 1:
             if leng != 0:
-                displaySites()
+                displaySites(dirs)
             else:
                 print("You haven't checked any site!")
         elif x == 2:
-            addSite("", "", "")
+            addSite(f, "", "", "")
         elif x == 3:
             if leng != 0:
                 print("Write the number of the site that you want to fetch.")
-                s = numberReq(leng) - 1
-                pathMod = path + dirs[s - 1] + os.sep + "sito.txt"
-                if os.path.exists(pathMod):
-                    f = open(pathMod, "r")
-                    addSite(f.readline(), dirs[s], f.readline())
-                    f.close()
-                else:
-                    print("No configuration file found.")
+                nameSite = dirs[numberReq(leng, dirs) - 1][0]
+                query = f.execute("SELECT link,mail FROM SiteAlert WHERE name=\"" + nameSite + "\"").fetchone()
+                link = query[0]
+                mail = query[1]
+                addSite(f, nameSite, link, mail)
             else:
                 print("You haven't checked any site.")
         elif x == 4:
             if s == "":
-                print("Do you want to check it continually? (Y/n)")
-                s = input()
+                s = input("Do you want to check it continually? (Y/n)")
                 while len(s) == 0 or ( s[0] != 'n' and s[0] != 'y'):
                     if len(s) == 0:
                         s = "y"
                         break
                     else:
-                        print("Wrong input, do you want to check it continually? (Y/n)")
-                        s = input()
+                        s = input("Wrong input, do you want to check it continually? (Y/n)")
             while True:
-                if checkSite() or s != "y":
+                if checkSite(f, dirs) or s != "y":
                     s = "n"
                     break
                 else:
@@ -230,16 +207,14 @@ def main():
         elif x == 5:
             if leng != 0:
                 print("Write the number of the site that you want to delete.")
-                s = numberReq(leng) - 1
-                pathMod = path + dirs[s] + os.sep
-                try:
-                    shutil.rmtree(pathMod, ignore_errors=True)
-                    print("Site successfully deleted!")
-                except shutil.Error:
-                    print("Something went wrong.")
+                s = numberReq(leng, dirs) - 1
+                f.execute("DELETE FROM SiteAlert WHERE name=\"" + dirs[s][0] + "\"")
+                f.commit()
+                print("Site deleted successfully!")
             else:
                 print("You haven't checked any site!")
         elif x == 6:
+            f.close()
             sys.exit(0)
         else:
             print("Unknown command: \"" + arg + "\"")
