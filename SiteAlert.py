@@ -65,8 +65,8 @@ def choice():
 
 def displaySites(dirs):
     i = 1
-    for dir in dirs[0]:
-        print(str(i) + ") " + dir)
+    for dir in dirs:
+        print(str(i) + ") " + dir[0])
         i = i + 1
 
 
@@ -126,7 +126,8 @@ def sendMail(nameSite, link, mail):
 
 def checkSite(f, dirs):
     if len(dirs) > 0:
-        for dir in dirs[0]:
+        for dir in dirs:
+            dir=dir[0]
             query = f.execute("SELECT hash,link,mail FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
             hash = query[0]
             link = query[1]
