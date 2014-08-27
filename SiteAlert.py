@@ -77,13 +77,12 @@ def stdURL(site):
 
 
 def URLEncode(read):
-    return hashlib.md5(read).digest()
+    return hashlib.md5(bytes(read)).hexdigest()
 
 
 def saveFile(f, nameSite, link, mail, hash):
     try:
-        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (
-        nameSite, link, mail, hash))
+        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (nameSite, link, mail, hash))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
@@ -97,7 +96,8 @@ def addSite(f, nameSite, link, mail):
         mail = input(
             "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
     try:
-        urli = urllib.request.urlopen(stdURL(link))
+        link=stdURL(link)
+        urli = urllib.request.urlopen(link)
         responseCode = urli.getcode()
         if responseCode == 200:
             saveFile(f, nameSite, link, mail, URLEncode(urli.read()))
