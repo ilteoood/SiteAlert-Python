@@ -36,7 +36,12 @@ import platform
 from os.path import expanduser
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
-
+header = [('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'),
+       ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+       ('Accept-Charset', 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'),
+       ('Accept-Encoding', 'none'),
+       ('Accept-Language', 'en-US,en;q=0.8'),
+       ('Connection', 'keep-alive')]
 
 def clearScreen():
     if platform.system() == "Windows":
@@ -97,7 +102,9 @@ def addSite(f, nameSite, link, mail):
             "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
     try:
         link=stdURL(link)
-        urli = urllib.request.urlopen(link)
+        urli = urllib.request.build_opener()
+        urli.addheaders = header
+        urli = urli.open(link)
         responseCode = urli.getcode()
         if responseCode == 200:
             saveFile(f, nameSite, link, mail, URLEncode(urli.read()))
@@ -132,8 +139,10 @@ def checkSite(f, dirs):
             hash = query[0]
             link = query[1]
             mail = query[2]
-            linkx = urllib.request.urlopen(link)
-            if hash != URLEncode(linkx.read()):
+            urli = urllib.request.build_opener()
+            urli.addheaders = header
+            urli = urli.open(link)
+            if hash != URLEncode(urli.read()):
                 print("The site \"" + dir + "\" hasn't been changed!")
             else:
                 print("The site \"" + dir + "\" has been changed!")
