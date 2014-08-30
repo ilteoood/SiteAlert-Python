@@ -76,7 +76,7 @@ def displaySites(dirs):
 
 
 def stdURL(site):
-    if not site.startswith("http://"):
+    if not site.startswith("http://") and not site.startswith("https://"):
         site = "http://" + site
     return site
 
