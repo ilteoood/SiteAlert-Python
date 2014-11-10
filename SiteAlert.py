@@ -142,7 +142,7 @@ def checkSite(f, dirs):
             urli = urllib.request.build_opener()
             urli.addheaders = header
             urli = urli.open(link)
-            if hash != URLEncode(urli.read()):
+            if hash == URLEncode(urli.read()):
                 print("The site \"" + dir + "\" hasn't been changed!")
             else:
                 print("The site \"" + dir + "\" has been changed!")
