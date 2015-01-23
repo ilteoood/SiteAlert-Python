@@ -1,7 +1,7 @@
 """
 SiteAlert, what are you waiting for?
 
-Copyright (c) 2014, Matteo Pietro Dazzi <---> ilteoood
+Copyright (c) 2015, Matteo Pietro Dazzi <---> ilteoood
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided
@@ -36,12 +36,14 @@ import platform
 from os.path import expanduser
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
-header = [('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'),
-       ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
-       ('Accept-Charset', 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'),
-       ('Accept-Encoding', 'none'),
-       ('Accept-Language', 'en-US,en;q=0.8'),
-       ('Connection', 'keep-alive')]
+header = [('User-Agent',
+           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'),
+          ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+          ('Accept-Charset', 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'),
+          ('Accept-Encoding', 'none'),
+          ('Accept-Language', 'en-US,en;q=0.8'),
+          ('Connection', 'keep-alive')]
+
 
 def clearScreen():
     if platform.system() == "Windows":
@@ -52,27 +54,28 @@ def clearScreen():
 
 def visualizeMenu():
     clearScreen()
-    print("What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Delete a site\n6) Exit")
+    print(
+        "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Add e-mail to notification\n6) Remove e-mail from notification\n7) Delete a site\n8) Exit")
 
 
 def choice():
     clearScreen()
     try:
         x = -1
-        while not 1 <= x <= 6:
-            if x != 6:
+        while not 1 <= x <= 8:
+            if x != 8:
                 visualizeMenu()
             x = int(input())
         return x
     except ValueError:
-        return 6
+        return 8
 
 
 def displaySites(dirs):
     i = 1
     for dir in dirs:
         print(str(i) + ") " + dir[0])
-        i = i + 1
+        i += 1
 
 
 def stdURL(site):
@@ -87,7 +90,8 @@ def URLEncode(read):
 
 def saveFile(f, nameSite, link, mail, hash):
     try:
-        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (nameSite, link, mail, hash))
+        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (
+        nameSite, link, mail, hash))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
@@ -101,7 +105,7 @@ def addSite(f, nameSite, link, mail):
         mail = input(
             "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
     try:
-        link=stdURL(link)
+        link = stdURL(link)
         urli = urllib.request.build_opener()
         urli.addheaders = header
         urli = urli.open(link)
@@ -134,20 +138,23 @@ def sendMail(nameSite, link, mail):
 def checkSite(f, dirs):
     if len(dirs) > 0:
         for dir in dirs:
-            dir=dir[0]
+            dir = dir[0]
             query = f.execute("SELECT hash,link,mail FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
             hash = query[0]
             link = query[1]
             mail = query[2]
             urli = urllib.request.build_opener()
             urli.addheaders = header
-            urli = urli.open(link)
-            if hash == URLEncode(urli.read()):
-                print("The site \"" + dir + "\" hasn't been changed!")
-            else:
-                print("The site \"" + dir + "\" has been changed!")
-                addSite(f, dir, link, mail)
-                sendMail(dir, link, mail)
+            try:
+                urli = urli.open(link)
+                if hash == URLEncode(urli.read()):
+                    print("The site \"" + dir + "\" hasn't been changed!")
+                else:
+                    print("The site \"" + dir + "\" has been changed!")
+                    addSite(f, dir, link, mail)
+                    sendMail(dir, link, mail)
+            except urllib.error.URLError:
+                print("[ERROR]: Network error.")
     else:
         print("You haven't checked any site.")
         return True
@@ -164,24 +171,28 @@ def numberReq(leng, dirs):
 
 
 def main():
-    c = 1; n = len(sys.argv)
+    c = 1
+    n = len(sys.argv)
     if not os.path.isfile(db):
         print("[WARNING]: No db found, creating a new one.")
         sqlite3.connect(db).execute(
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`mail` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));").close()
     f = sqlite3.connect(db)
     while True:
-        dirs = f.execute("SELECT name FROM SiteAlert").fetchall(); leng = len(dirs); s = ""
+        dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
+        leng = len(dirs)
+        s = ""
         if c < n:
             arg = sys.argv[c]
-            x = {"-a": 2, "-b": 4, "-c": 4, "-d": 5, "-e": 6, "-f": 3, "-h": 0, "-s": 1}.get(arg)
+            x = {"-a": 2, "-am": 5, "-b": 4, "-c": 4, "-d": 5, "-e": 6, "-f": 3, "-h": 0, "-r": 6, "-s": 1}.get(arg)
             s = {"-b": "n", "-c": "y"}.get(arg)
             c += 1
         else:
             x = choice()
         clearScreen()
         if x == 0:
-            print("Usage:\n-a -> add a new site\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-s -> show the list of the sites")
+            print(
+                "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
         elif x == 1:
             if leng != 0:
                 displaySites(dirs)
@@ -214,7 +225,23 @@ def main():
                     break
                 else:
                     time.sleep(30)
-        elif x == 5:
+        elif x == 5 or x == 6:
+            if leng != 0:
+                print("Write the number of the site.")
+                nameSite = dirs[numberReq(leng, dirs) - 1][0]
+                mail = input("Insert e-mail: ")
+                if x == 5:
+                    f.execute(
+                        "UPDATE SiteAlert SET mail=mail||\"%s\" WHERE name=\"%s\"" % (mail + ";", nameSite)).fetchall()
+                else:
+                    f.execute("UPDATE SiteAlert SET mail=replace(mail, \"%s\", '') WHERE name=\"%s\"" % (
+                    mail + ";", nameSite)).fetchall()
+                    f.execute("UPDATE SiteAlert SET mail=replace(mail, \";;\", ';') WHERE name=\"%s\"" % (
+                    nameSite)).fetchall()
+                f.commit()
+            else:
+                print("You haven't checked any site.")
+        elif x == 7:
             if leng != 0:
                 print("Write the number of the site that you want to delete.")
                 s = numberReq(leng, dirs) - 1
@@ -223,7 +250,7 @@ def main():
                 print("Site deleted successfully!")
             else:
                 print("You haven't checked any site!")
-        elif x == 6:
+        elif x == 8:
             f.close()
             sys.exit(0)
         else:
