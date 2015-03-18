@@ -5,12 +5,14 @@ SiteAlert, what are you waiting for?
 
 With this application you can monitor the changes of one or more web pages.
 
-Copyright (c) 2014, Matteo Pietro Dazzi <---> ilteoood
+Copyright (c) 2015, Matteo Pietro Dazzi <---> ilteoood
 All rights reserved.
 
-List of the avaible arguments:
+List of the available arguments:
 
 -a -> add a new site
+
+-am -> register new mail
 
 -b -> continuous check
 
@@ -21,6 +23,8 @@ List of the avaible arguments:
 -e -> exit
 
 -h -> print this list
+
+-r -> remove registered e-mail
 
 -s -> show the list of the sites
 

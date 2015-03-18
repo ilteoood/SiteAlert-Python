@@ -90,8 +90,9 @@ def URLEncode(read):
 
 def saveFile(f, nameSite, link, mail, hash):
     try:
-        f.execute("INSERT INTO SiteAlert (name,link,mail,hash) VALUES (\"%s\",\"%s\",\"%s\",\"%s\")" % (
-        nameSite, link, mail, hash))
+        f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (\"%s\",\"%s\",\"%s\")" % (
+            nameSite, link, hash))
+        f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (nameSite, mail))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
@@ -99,7 +100,7 @@ def saveFile(f, nameSite, link, mail, hash):
 
 
 def addSite(f, nameSite, link, mail):
-    if link == "" or nameSite == "" or mail == "":
+    if link == "" or nameSite == "":
         link = input("Insert the link for the site: ")
         nameSite = input("Insert a name for the site: ")
         mail = input(
@@ -120,14 +121,14 @@ def addSite(f, nameSite, link, mail):
         print("There is an error with the link.")
 
 
-def sendMail(nameSite, link, mail):
+def sendMail(f, nameSite, link):
     try:
         server = smtplib.SMTP("smtp.gmail.com:587")
         server.starttls()
         server.login("SiteAlertMailNotification@gmail.com", "SiteAlertMailNotificatio")
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
-        mail = mail.split(";")
+        mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite))
         for address in mail:
             server.sendmail("SiteAlertMailNotification@gmail.com", address, msg)
         server.close()
@@ -139,10 +140,9 @@ def checkSite(f, dirs):
     if len(dirs) > 0:
         for dir in dirs:
             dir = dir[0]
-            query = f.execute("SELECT hash,link,mail FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
+            query = f.execute("SELECT hash,link FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
             hash = query[0]
             link = query[1]
-            mail = query[2]
             urli = urllib.request.build_opener()
             urli.addheaders = header
             try:
@@ -151,8 +151,8 @@ def checkSite(f, dirs):
                     print("The site \"" + dir + "\" hasn't been changed!")
                 else:
                     print("The site \"" + dir + "\" has been changed!")
-                    addSite(f, dir, link, mail)
-                    sendMail(dir, link, mail)
+                    addSite(f, dir, link, "")
+                    sendMail(f, dir, link)
             except urllib.error.URLError:
                 print("[ERROR]: Network error.")
     else:
@@ -175,8 +175,11 @@ def main():
     n = len(sys.argv)
     if not os.path.isfile(db):
         print("[WARNING]: No db found, creating a new one.")
-        sqlite3.connect(db).execute(
-            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`mail` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));").close()
+        f = sqlite3.connect(db)
+        f.execute(
+            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
+        f.execute("CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
+        f.close()
     f = sqlite3.connect(db)
     while True:
         dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
@@ -184,7 +187,7 @@ def main():
         s = ""
         if c < n:
             arg = sys.argv[c]
-            x = {"-a": 2, "-am": 5, "-b": 4, "-c": 4, "-d": 5, "-e": 6, "-f": 3, "-h": 0, "-r": 6, "-s": 1}.get(arg)
+            x = {"-a": 2, "-am": 5, "-b": 4, "-c": 4, "-d": 7, "-e": 8, "-f": 3, "-h": 0, "-r": 6, "-s": 1}.get(arg)
             s = {"-b": "n", "-c": "y"}.get(arg)
             c += 1
         else:
@@ -225,27 +228,26 @@ def main():
                     break
                 else:
                     time.sleep(30)
+                    dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
         elif x == 5 or x == 6:
             if leng != 0:
                 print("Write the number of the site.")
                 nameSite = dirs[numberReq(leng, dirs) - 1][0]
                 mail = input("Insert e-mail: ")
                 if x == 5:
-                    f.execute(
-                        "UPDATE SiteAlert SET mail=mail||\"%s\" WHERE name=\"%s\"" % (mail + ";", nameSite)).fetchall()
+                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (nameSite, mail)).fetchall()
                 else:
-                    f.execute("UPDATE SiteAlert SET mail=replace(mail, \"%s\", '') WHERE name=\"%s\"" % (
-                    mail + ";", nameSite)).fetchall()
-                    f.execute("UPDATE SiteAlert SET mail=replace(mail, \";;\", ';') WHERE name=\"%s\"" % (
-                    nameSite)).fetchall()
+                    f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (mail, nameSite)).fetchall()
                 f.commit()
             else:
                 print("You haven't checked any site.")
+
         elif x == 7:
             if leng != 0:
                 print("Write the number of the site that you want to delete.")
                 s = numberReq(leng, dirs) - 1
                 f.execute("DELETE FROM SiteAlert WHERE name=\"" + dirs[s][0] + "\"")
+                f.execute("DELETE FROM Registered WHERE name=\"" + dirs[s][0] + "\"")
                 f.commit()
                 print("Site deleted successfully!")
             else:
@@ -255,7 +257,7 @@ def main():
             sys.exit(0)
         else:
             print("Unknown command: \"" + arg + "\"")
-        input("Press enter to continue...")
+            input("Press enter to continue...")
 
 
 if __name__ == "__main__":
