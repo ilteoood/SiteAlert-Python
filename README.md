@@ -12,7 +12,7 @@ List of the available arguments:
 
 -a -> add a new site
 
--am -> register new mail
+-am -> add new e-mail address
 
 -b -> continuous check
 
@@ -22,9 +22,9 @@ List of the available arguments:
 
 -e -> exit
 
--h -> print this list
+-h -> print this help
 
--r -> remove registered e-mail
+-r -> remove e-mail address
 
 -s -> show the list of the sites
 
