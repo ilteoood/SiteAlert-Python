@@ -34,6 +34,7 @@ import time
 import sys
 import platform
 from os.path import expanduser
+from bs4 import BeautifulSoup
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
 header = [('User-Agent',
@@ -85,14 +86,17 @@ def stdURL(site):
 
 
 def URLEncode(read):
-    return hashlib.md5(bytes(read)).hexdigest()
+    read = BeautifulSoup(read)
+    return hashlib.md5(bytes(read.get_text(), 'utf-8')).hexdigest()
 
 
 def saveFile(f, nameSite, link, mail, hash):
     try:
         f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (\"%s\",\"%s\",\"%s\")" % (
             nameSite, link, hash))
-        f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (nameSite, mail))
+        mail = mail.split(";");
+        for m in mail:
+            f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (nameSite, m))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
