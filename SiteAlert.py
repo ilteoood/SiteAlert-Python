@@ -46,6 +46,13 @@ header = [('User-Agent',
           ('Connection', 'keep-alive')]
 
 
+def startTelegram(notification, who='', msg=''):
+    if notification:
+        os.system("./telegram-cli -k tg-server.pub -W -e \"msg " + who + " " + msg + "\"")
+    else:
+        os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -s action.lua &")
+
+
 def clearScreen():
     if platform.system() == "Windows":
         os.system("cls")
@@ -90,20 +97,21 @@ def URLEncode(read):
     return hashlib.md5(bytes(read.get_text(), 'utf-8')).hexdigest()
 
 
-def saveFile(f, nameSite, link, mail, hash):
+def saveFile(f, nameSite, link, mail, telegram, hash):
     try:
         f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (\"%s\",\"%s\",\"%s\")" % (
             nameSite, link, hash))
         mail = mail.split(";");
         for m in mail:
-            f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (nameSite, m))
+            f.execute("INSERT INTO Registered (name, mail, telegram) VALUES (\"%s\",\"%s\", \"%s\")" % (
+            nameSite, m, telegram))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
     print("Site saved correctly!")
 
 
-def addSite(f, nameSite, link, mail):
+def addSite(f, nameSite, link, mail, telegram=''):
     if link == "" or nameSite == "":
         link = input("Insert the link for the site: ")
         nameSite = input("Insert a name for the site: ")
@@ -116,7 +124,7 @@ def addSite(f, nameSite, link, mail):
         urli = urli.open(link)
         responseCode = urli.getcode()
         if responseCode == 200:
-            saveFile(f, nameSite, link, mail, URLEncode(urli.read()))
+            saveFile(f, nameSite, link, mail, telegram, URLEncode(urli.read()))
         elif responseCode == 404:
             print("This page doesn't exist!")
         else:
@@ -132,10 +140,14 @@ def sendMail(f, nameSite, link):
         server.login("SiteAlertMailNotification@gmail.com", "SiteAlertMailNotificatio")
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
-        mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite))
+        mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
+        telegram = f.execute("SELECT telegram FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         for address in mail:
             server.sendmail("SiteAlertMailNotification@gmail.com", address, msg)
         server.close()
+        for t in telegram:
+            startTelegram(True, t[0], subj + " Link: " + link)
+        startTelegram(False)
     except smtplib.SMTPRecipientsRefused:
         print("Error with the e-mail destination address.")
 
@@ -177,12 +189,14 @@ def numberReq(leng, dirs):
 def main():
     c = 1
     n = len(sys.argv)
+    x = 0
     if not os.path.isfile(db):
         print("[WARNING]: No db found, creating a new one.")
         f = sqlite3.connect(db)
         f.execute(
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
-        f.execute("CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
+        f.execute(
+            "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, 'telegram' TEXT, PRIMARY KEY(name, mail));")
         f.close()
     f = sqlite3.connect(db)
     while True:
@@ -191,8 +205,9 @@ def main():
         s = ""
         if c < n:
             arg = sys.argv[c]
-            x = {"-a": 2, "-am": 5, "-b": 4, "-c": 4, "-d": 7, "-e": 8, "-f": 3, "-h": 0, "-r": 6, "-s": 1}.get(arg)
-            s = {"-b": "n", "-c": "y"}.get(arg)
+            x = {"-a": 2, "-ae": 10, "-am": 5, "-ame": 9, "-b": 4, "-c": 4, "-d": 7, "-e": 8, "-f": 3, "-h": 0, "-r": 6,
+                 "-re": 11, "-s": 1, "-se": 12}.get(arg)
+            s = {"-b": "y", "-c": "n"}.get(arg)
             c += 1
         else:
             x = choice()
@@ -200,13 +215,19 @@ def main():
         if x == 0:
             print(
                 "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
-        elif x == 1:
+        elif x == 1 or x == 12:
             if leng != 0:
                 displaySites(dirs)
             else:
                 print("You haven't checked any site!")
+            if x == 12:
+                x = 8
         elif x == 2:
             addSite(f, "", "", "")
+        elif x == 10:
+            addSite(f, sys.argv[c], sys.argv[c + 1], sys.argv[c + 2], sys.argv[c + 3])
+            c += 4
+            x = 8
         elif x == 3:
             if leng != 0:
                 print("Write the number of the site that you want to fetch.")
@@ -220,7 +241,7 @@ def main():
         elif x == 4:
             if s == "":
                 s = input("Do you want to check it continually? (Y/n)")
-                while len(s) == 0 or ( s[0] != 'n' and s[0] != 'y'):
+                while len(s) == 0 or (s[0] != 'n' and s[0] != 'y'):
                     if len(s) == 0:
                         s = "y"
                         break
@@ -233,19 +254,27 @@ def main():
                 else:
                     time.sleep(30)
                     dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
-        elif x == 5 or x == 6:
+        elif x == 5 or x == 6 or x == 9 or x == 11:
             if leng != 0:
-                print("Write the number of the site.")
-                nameSite = dirs[numberReq(leng, dirs) - 1][0]
-                mail = input("Insert e-mail: ")
-                if x == 5:
-                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (nameSite, mail)).fetchall()
+                if x == 9 or x == 11:
+                    nameSite = sys.argv[c]
+                    mail = sys.argv[c + 1]
+                    telegram = sys.argv[c + 2]
+                    c += 3
+                    x = 8
+                else:
+                    print("Write the number of the site.")
+                    nameSite = dirs[numberReq(leng, dirs) - 1][0]
+                    mail = input("Insert e-mail: ")
+                if x == 5 or x == 9:
+                    f.execute(
+                        "INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (nameSite, mail, telegram)).fetchall()
                 else:
                     f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (mail, nameSite)).fetchall()
                 f.commit()
+                print("Action completed successfully!")
             else:
                 print("You haven't checked any site.")
-
         elif x == 7:
             if leng != 0:
                 print("Write the number of the site that you want to delete.")
@@ -256,11 +285,12 @@ def main():
                 print("Site deleted successfully!")
             else:
                 print("You haven't checked any site!")
-        elif x == 8:
+        elif x != 8:
+            print("Unknown command: \"" + arg + "\"")
+        if x == 8:
             f.close()
             sys.exit(0)
-        else:
-            print("Unknown command: \"" + arg + "\"")
+        if x < 9:
             input("Press enter to continue...")
 
 
