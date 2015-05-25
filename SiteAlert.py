@@ -47,10 +47,13 @@ header = [('User-Agent',
 
 
 def startTelegram(notification, who='', msg=''):
-    if notification:
-        os.system("./telegram-cli -k tg-server.pub -W -e \"msg " + who + " " + msg + "\"")
+    if platform.system() != "Windows":
+        if notification:
+            os.system("./telegram-cli -k tg-server.pub -W -e \"msg " + who + " " + msg + "\"")
+        else:
+            os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -s action.lua &")
     else:
-        os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -s action.lua &")
+        print("Function not supported.")
 
 
 def clearScreen():
@@ -104,7 +107,7 @@ def saveFile(f, nameSite, link, mail, telegram, hash):
         mail = mail.split(";");
         for m in mail:
             f.execute("INSERT INTO Registered (name, mail, telegram) VALUES (\"%s\",\"%s\", \"%s\")" % (
-            nameSite, m, telegram))
+                nameSite, m, telegram))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
@@ -181,7 +184,7 @@ def numberReq(leng, dirs):
     s = -1
     displaySites(dirs)
     while s <= 0 or s > leng:
-        print("Number of the site: ", )
+        print("Number of the site: ",)
         s = int(input())
     return s
 
