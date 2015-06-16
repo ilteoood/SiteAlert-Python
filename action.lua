@@ -1,27 +1,27 @@
 function on_msg_receive (msg)
-	msg.text = string.lower(msg.text)
+	msg.text = msg.text:gsub("^%l", string.lower)
   if msg.out then
     return
   end
   if (msg.text=='ping') then
     send_msg (msg.from.print_name, 'pong', ok_cb, false)
-	elseif (msg.text=='sitealert mostra') then
+	elseif (msg.text=='mostra') then
 		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -se', temp
 		send_msg(msg.from.print_name, os.capture(cmd), ok_cb, false)
-	elseif (string.match(msg.text,'sitealert controlla')) then
+	elseif (string.match(msg.text,'controlla')) then
 		param = explode(msg.text)
-		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -ae '.. param[4] .. ' ' .. param[2].. ' ' .. param[6] .. ' ' .. msg.from.print_name
+		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -ae '.. param[3] .. ' ' .. param[1].. ' ' .. param[5] .. ' ' .. msg.from.print_name
 		send_msg(msg.from.print_name, os.capture(cmd), ok_cb, false)
-	elseif (string.match(msg.text,'sitealert aggiungimi'))then
+	elseif (string.match(msg.text,'aggiungimi'))then
 		param = explode(msg.text)
-		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -ame ' .. param[2] .. ' ' .. param[4] .. ' ' .. msg.from.print_name
+		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -ame ' .. param[1] .. ' ' .. param[3] .. ' ' .. msg.from.print_name
 		send_msg(msg.from.print_name, os.capture(cmd), ok_cb, false)
-	elseif (string.match(msg.text,'sitealert rimuovimi'))then
+	elseif (string.match(msg.text,'rimuovimi'))then
 		param = explode(msg.text)
-		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -re '.. param[2] .. ' ' .. param[3] .. ' ' .. msg.from.print_name
+		cmd = 'python3 /home/pi/SiteAlert-python/SiteAlert.py -re '.. param[1] .. ' ' .. param[2] .. ' ' .. msg.from.print_name
 		send_msg(msg.from.print_name, os.capture(cmd), ok_cb, false)
 	else
-		cmd = 'Ciao '.. msg.from.print_name .. '!\nBenvenuto nel bot di @SiteAlert.\nComandi disponibili:\nsitealert controlla _link_ chiamandolo _nome_ avvisandomi _mail_\nsitealert aggiungimi _nome_ avvisandomi _mail_\nsitealert mostra\nsitealert rimuovimi _nome_ _mail_\nTest: ping'
+		cmd = 'Ciao '.. msg.from.print_name .. '!\nBenvenuto nel bot di @SiteAlert.\nComandi disponibili:\ncontrolla _link_ chiamandolo _nome_ avvisandomi _mail_\naggiungimi _nome_ avvisandomi _mail_\nmostra\nrimuovimi _nome_ _mail_\nTest: ping'
 		send_msg(msg.from.print_name, cmd, ok_cb, false)
   end
 end
