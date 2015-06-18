@@ -114,7 +114,7 @@ def saveFile(f, nameSite, link, mail, telegram, hash):
     print("Site saved correctly!")
 
 
-def addSite(f, nameSite, link, mail, telegram=''):
+def addSite(f, nameSite, link, mail='', telegram=''):
     if link == "" or nameSite == "":
         link = input("Insert the link for the site: ")
         nameSite = input("Insert a name for the site: ")
@@ -235,10 +235,9 @@ def main():
             if leng != 0:
                 print("Write the number of the site that you want to fetch.")
                 nameSite = dirs[numberReq(leng, dirs) - 1][0]
-                query = f.execute("SELECT link,mail FROM SiteAlert WHERE name=\"" + nameSite + "\"").fetchone()
+                query = f.execute("SELECT link FROM SiteAlert WHERE name=\"" + nameSite + "\"").fetchone()
                 link = query[0]
-                mail = query[1]
-                addSite(f, nameSite, link, mail)
+                addSite(f, nameSite, link)
             else:
                 print("You haven't checked any site.")
         elif x == 4:
