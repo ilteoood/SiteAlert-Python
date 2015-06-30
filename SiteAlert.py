@@ -305,7 +305,7 @@ def main():
         if x == 9:
             f.close()
             sys.exit(0)
-        if x <= 10:
+        if x < 10:
             input("Press enter to continue...")
 
 
