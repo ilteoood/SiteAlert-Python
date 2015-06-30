@@ -265,8 +265,8 @@ def main():
                     break
                 else:
                     time.sleep(30)
-                    dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
                     cleanDB(f)
+                    dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
         elif x == 5 or x == 6 or x == 10 or x == 12:
             if leng != 0:
                 if x == 10 or x == 12:
