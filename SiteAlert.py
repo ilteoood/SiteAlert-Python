@@ -34,6 +34,7 @@ import time
 import sys
 import platform
 from os.path import expanduser
+
 from bs4 import BeautifulSoup
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
@@ -66,20 +67,20 @@ def clearScreen():
 def visualizeMenu():
     clearScreen()
     print(
-        "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Add e-mail to notification\n6) Remove e-mail from notification\n7) Delete a site\n8) Exit")
+        "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Add e-mail to notification\n6) Remove e-mail from notification\n7) Delete a site\n8) Clean database\n9) Exit")
 
 
 def choice():
     clearScreen()
     try:
         x = -1
-        while not 1 <= x <= 8:
-            if x != 8:
+        while not 1 <= x <= 9:
+            if x != 9:
                 visualizeMenu()
             x = int(input())
         return x
     except ValueError:
-        return 8
+        return 9
 
 
 def displaySites(dirs):
@@ -87,6 +88,14 @@ def displaySites(dirs):
     for dir in dirs:
         print(str(i) + ") " + dir[0])
         i += 1
+
+
+def cleanDB(f):
+    nameSite = f.execute("SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered GROUP BY name").fetchall()
+    for name in nameSite:
+        print("Removing %s..." % (name))
+        f.execute("DELETE FROM SiteAlert WHERE name = \"%s\"" % (name))
+    f.commit()
 
 
 def stdURL(site):
@@ -184,7 +193,7 @@ def numberReq(leng, dirs):
     s = -1
     displaySites(dirs)
     while s <= 0 or s > leng:
-        print("Number of the site: ",)
+        print("Number of the site: ", )
         s = int(input())
     return s
 
@@ -208,8 +217,9 @@ def main():
         s = ""
         if c < n:
             arg = sys.argv[c]
-            x = {"-a": 2, "-ae": 10, "-am": 5, "-ame": 9, "-b": 4, "-c": 4, "-d": 7, "-e": 8, "-f": 3, "-h": 0, "-r": 6,
-                 "-re": 11, "-s": 1, "-se": 12}.get(arg)
+            x = {"-a": 2, "-ae": 11, "-am": 5, "-ame": 10, "-b": 4, "-c": 4, "-cl": 8, "-d": 7, "-e": 9, "-f": 3,
+                 "-h": 0, "-r": 6,
+                 "-re": 12, "-s": 1, "-se": 13}.get(arg)
             s = {"-b": "y", "-c": "n"}.get(arg)
             c += 1
         else:
@@ -217,20 +227,20 @@ def main():
         clearScreen()
         if x == 0:
             print(
-                "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
-        elif x == 1 or x == 12:
+                "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-cl -> clean database\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
+        elif x == 1 or x == 13:
             if leng != 0:
                 displaySites(dirs)
             else:
                 print("You haven't checked any site!")
-            if x == 12:
-                x = 8
+            if x == 13:
+                x = 9
         elif x == 2:
             addSite(f, "", "", "")
-        elif x == 10:
+        elif x == 11:
             addSite(f, sys.argv[c], sys.argv[c + 1], sys.argv[c + 2], sys.argv[c + 3])
             c += 4
-            x = 8
+            x = 9
         elif x == 3:
             if leng != 0:
                 print("Write the number of the site that you want to fetch.")
@@ -256,19 +266,20 @@ def main():
                 else:
                     time.sleep(30)
                     dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
-        elif x == 5 or x == 6 or x == 9 or x == 11:
+                    cleanDB(f)
+        elif x == 5 or x == 6 or x == 10 or x == 12:
             if leng != 0:
-                if x == 9 or x == 11:
+                if x == 10 or x == 12:
                     nameSite = sys.argv[c]
                     mail = sys.argv[c + 1]
                     telegram = sys.argv[c + 2]
                     c += 3
-                    x = 8
+                    x = 9
                 else:
                     print("Write the number of the site.")
                     nameSite = dirs[numberReq(leng, dirs) - 1][0]
                     mail = input("Insert e-mail: ")
-                if x == 5 or x == 9:
+                if x == 5 or x == 10:
                     f.execute(
                         "INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (nameSite, mail, telegram)).fetchall()
                 else:
@@ -287,12 +298,14 @@ def main():
                 print("Site deleted successfully!")
             else:
                 print("You haven't checked any site!")
-        elif x != 8:
+        elif x == 8:
+            cleanDB(f)
+        elif x != 9:
             print("Unknown command: \"" + arg + "\"")
-        if x == 8:
+        if x == 9:
             f.close()
             sys.exit(0)
-        if x < 9:
+        if x <= 10:
             input("Press enter to continue...")
 
 
