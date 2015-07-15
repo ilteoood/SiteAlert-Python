@@ -1,11 +1,11 @@
 # SiteAlert
-=========
+------------------------
 
 **SiteAlert, what are you waiting for?**
 
 With this application you can monitor the changes of one or more web pages.
 
-Copyright (c) 2015, Matteo Pietro Dazzi <---> ilteoood
+Copyright (c) 2015, Matteo Pietro Dazzi <---> iLTeoooD
 All rights reserved.
 
 ### List of the available arguments:
@@ -30,7 +30,23 @@ All rights reserved.
 
 -s -> show the list of the sites
 
-================================
+------------------------
+### List of the available bot commands:
+
+- mostra -> show the list of the sites
+- controlla -> add a new site
+- aggiungimi -> add new e-mail address
+- rimuovimi -> delete an e-mail address
+- registrami -> associates the e-mail and the telegram user
+- registrato -> check the registration process
+- cancellami -> delete the registration
+- ping -> bot service test
+
+Don't know where to host this service? No problem!
+
+Speak with the official bot, [@SiteAlert][4]!
+
+------------------------
 
 > ###Requirements: 
 > Requires beautifulsoup4 to be executed, if you want to install it, see [this][1]
@@ -39,7 +55,7 @@ All rights reserved.
 
 **NOTE: this function will work only under Linux or Mac OS X systems.**
 
-================================
+------------------------
 ###License:
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided
@@ -65,4 +81,5 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [1]: http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-beautiful-soup
 [2]: https://github.com/vysheng/tg/
-[3]: https://github.com/ilteoood/SiteAlert-Python/blob/master/action.lua
+[3]: https://github.com/ilteoood/SiteAlert-Python/blob/master/action.py
+[4]: https://telegram.me/SiteAlert

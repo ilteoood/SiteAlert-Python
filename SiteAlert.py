@@ -52,7 +52,7 @@ def startTelegram(notification, who='', msg=''):
         if notification:
             os.system("./telegram-cli -k tg-server.pub -W -e \"msg " + who + " " + msg + "\"")
         else:
-            os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -s action.lua &")
+            os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -Z action.py &")
     else:
         print("Function not supported.")
 
@@ -83,11 +83,14 @@ def choice():
         return 9
 
 
-def displaySites(dirs):
-    i = 1
-    for dir in dirs:
-        print(str(i) + ") " + dir[0])
-        i += 1
+def displaySites(dirs, leng):
+    if leng != 0:
+        i = 1
+        for dir in dirs:
+            print(str(i) + ") " + dir[0])
+            i += 1
+    else:
+        print("You haven't checked any site!")
 
 
 def cleanDB(f):
@@ -191,7 +194,7 @@ def checkSite(f, dirs):
 
 def numberReq(leng, dirs):
     s = -1
-    displaySites(dirs)
+    displaySites(dirs, leng)
     while s <= 0 or s > leng:
         print("Number of the site: ", )
         s = int(input())
@@ -209,6 +212,7 @@ def main():
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
         f.execute(
             "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, 'telegram' TEXT, PRIMARY KEY(name, mail));")
+        f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL, PRIMARY KEY (mail));")
         f.close()
     f = sqlite3.connect(db)
     while True:
@@ -217,9 +221,9 @@ def main():
         s = ""
         if c < n:
             arg = sys.argv[c]
-            x = {"-a": 2, "-ae": 11, "-am": 5, "-ame": 10, "-b": 4, "-c": 4, "-cl": 8, "-d": 7, "-e": 9, "-f": 3,
+            x = {"-a": 2, "-am": 5, "-b": 4, "-c": 4, "-cl": 8, "-d": 7, "-e": 9, "-f": 3,
                  "-h": 0, "-r": 6,
-                 "-re": 12, "-s": 1, "-se": 13}.get(arg)
+                 "-s": 1}.get(arg)
             s = {"-b": "y", "-c": "n"}.get(arg)
             c += 1
         else:
@@ -228,19 +232,10 @@ def main():
         if x == 0:
             print(
                 "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-cl -> clean database\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
-        elif x == 1 or x == 13:
-            if leng != 0:
-                displaySites(dirs)
-            else:
-                print("You haven't checked any site!")
-            if x == 13:
-                x = 9
+        elif x == 1:
+            displaySites(dirs, leng)
         elif x == 2:
             addSite(f, "", "", "")
-        elif x == 11:
-            addSite(f, sys.argv[c], sys.argv[c + 1], sys.argv[c + 2], sys.argv[c + 3])
-            c += 4
-            x = 9
         elif x == 3:
             if leng != 0:
                 print("Write the number of the site that you want to fetch.")
@@ -267,21 +262,13 @@ def main():
                     time.sleep(30)
                     cleanDB(f)
                     dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
-        elif x == 5 or x == 6 or x == 10 or x == 12:
+        elif x == 5 or x == 6:
             if leng != 0:
-                if x == 10 or x == 12:
-                    nameSite = sys.argv[c]
-                    mail = sys.argv[c + 1]
-                    telegram = sys.argv[c + 2]
-                    c += 3
-                    x = 9
-                else:
-                    print("Write the number of the site.")
-                    nameSite = dirs[numberReq(leng, dirs) - 1][0]
-                    mail = input("Insert e-mail: ")
-                if x == 5 or x == 10:
-                    f.execute(
-                        "INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (nameSite, mail, telegram)).fetchall()
+                print("Write the number of the site.")
+                nameSite = dirs[numberReq(leng, dirs) - 1][0]
+                mail = input("Insert e-mail: ")
+                if x == 5:
+                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (nameSite, mail, "")).fetchall()
                 else:
                     f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (mail, nameSite)).fetchall()
                 f.commit()
@@ -305,8 +292,7 @@ def main():
         if x == 9:
             f.close()
             sys.exit(0)
-        if x < 10:
-            input("Press enter to continue...")
+        input("Press enter to continue...")
 
 
 if __name__ == "__main__":
