@@ -78,7 +78,6 @@ def on_msg_receive(msg):
         peer = msg.src
     else:
         peer = msg.dest
-    pp.pprint(msg)
     dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
     leng = len(dirs)
     credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (msg.src.name)).fetchone()
@@ -146,11 +145,11 @@ def on_secret_chat_update(peer, types):
     return "on_secret_chat_update"
 
 
-def on_user_update():
+def on_user_update(peer, what_changed):
     pass
 
 
-def on_chat_update():
+def on_chat_update(peer, what_changed):
     pass
 
 

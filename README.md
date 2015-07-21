@@ -51,7 +51,7 @@ Speak with the official bot, [@SiteAlert][4]!
 > ###Requirements: 
 > Requires beautifulsoup4 to be executed, if you want to install it, see [this][1]
 
-> To use the Telegram notification (Linux and OS X only), you need to compile and put in the same directory of SiteAlert the telegram-cli executable. For further information see [this][2] amazing project and my [action.lua][3] script to create and interact with a Telegram bot. (Will be translated in English)
+> To use the Telegram notification (Linux and OS X only), you need to compile and put in the same directory of SiteAlert the telegram-cli executable. For further information see [this][2] amazing project and my [action.py][3] script to create and interact with a Telegram bot. (Will be translated in English)
 
 **NOTE: this function will work only under Linux or Mac OS X systems.**
 
