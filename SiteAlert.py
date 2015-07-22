@@ -209,7 +209,7 @@ def main():
         print("[WARNING]: No db found, creating a new one.")
         f = sqlite3.connect(db)
         f.execute(
-            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
+            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
         f.execute(
             "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, 'telegram' TEXT, PRIMARY KEY(name, mail));")
         f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL, PRIMARY KEY (mail));")

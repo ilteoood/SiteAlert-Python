@@ -113,7 +113,7 @@ def on_msg_receive(msg):
         else:
             if credentials is not None:
                 f.execute(
-                    "DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (credentials, param[1])).fetchall()
+                    "DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (credentials[0], param[1])).fetchall()
                 msg.src.send_msg("Action completed successfully!")
             else:
                 msg.src.send_msg("User not registered!")
@@ -127,11 +127,16 @@ def on_msg_receive(msg):
             msg.src.send_msg("E-mail updated!")
         else:
             msg.src.send_msg("You already own an account.")
-
     elif mymsg == "registrato":
-        msg.src.send_msg(
-            "You don't own any account!" if credentials is None else "You have registered this e-mail: " + credentials[
-                0])
+        if credentials is None:
+            msg.src.send_msg("You don't own any account!")
+        else:
+            i = 1
+            mymsg = "You have registered this e-mail: " + credentials[0] + "\nYou are registered to:"
+            for site in f.execute("SELECT name FROM Registered WHERE mail = \"%s\"" % (credentials[0])).fetchall():
+                mymsg = mymsg + "\n" + str(i) + ") " + site[0]
+                i += 1
+            msg.src.send_msg(mymsg)
     elif mymsg.startswith("cancellami"):
         f.execute("DELETE from Users WHERE telegram = \"%s\"" % (msg.src.name))
         msg.src.send_msg("Registration deleted successfully!")
