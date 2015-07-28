@@ -44,14 +44,14 @@ All rights reserved.
 
 Don't know where to host this service? No problem!
 
-Speak with the official bot, [@SiteAlert][4]!
+Speak with the official bot, [@SiteAlert_bot][4]!
 
 ------------------------
 
 > ###Requirements: 
 > Requires beautifulsoup4 to be executed, if you want to install it, see [this][1]
 
-> To use the Telegram notification (Linux and OS X only), you need to compile and put in the same directory of SiteAlert the telegram-cli executable. For further information see [this][2] amazing project and my [action.py][3] script to create and interact with a Telegram bot. (Will be translated in English)
+> To use the Telegram notification, you must install pyTelegramBotAPI. For further information see [this][2] amazing project and my [SiteAlert_bot.py][3] script to create and interact with a Telegram bot. (Will be translated in English)
 
 **NOTE: this function will work only under Linux or Mac OS X systems.**
 
@@ -80,6 +80,6 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ------------------------
 
 [1]: http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-beautiful-soup
-[2]: https://github.com/vysheng/tg/
-[3]: https://github.com/ilteoood/SiteAlert-Python/blob/master/action.py
-[4]: https://telegram.me/SiteAlert
+[2]: https://github.com/eternnoir/pyTelegramBotAPI/
+[3]: https://github.com/ilteoood/SiteAlert-Python/blob/master/SiteAlert_bot.py
+[4]: https://telegram.me/SiteAlert_bot

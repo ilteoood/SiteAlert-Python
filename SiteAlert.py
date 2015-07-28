@@ -33,6 +33,7 @@ import smtplib
 import time
 import sys
 import platform
+import telebot
 from os.path import expanduser
 
 from bs4 import BeautifulSoup
@@ -45,16 +46,10 @@ header = [('User-Agent',
           ('Accept-Encoding', 'none'),
           ('Accept-Language', 'en-US,en;q=0.8'),
           ('Connection', 'keep-alive')]
-
-
-def startTelegram(notification, who='', msg=''):
-    if platform.system() != "Windows":
-        if notification:
-            os.system("./telegram-cli -k tg-server.pub -W -e \"msg " + who + " " + msg + "\"")
-        else:
-            os.system("killall telegram-cli ; ./telegram-cli -k tg-server.pub -W -Z action.py &")
-    else:
-        print("Function not supported.")
+TOKEN = 'YOUR TOKEN HERE'
+tb = telebot.TeleBot(TOKEN)
+mail = 'YOUR MAIL HERE'
+psw = 'YOUR PASSWORD HERE'
 
 
 def clearScreen():
@@ -152,7 +147,7 @@ def sendMail(f, nameSite, link):
     try:
         server = smtplib.SMTP("smtp.gmail.com:587")
         server.starttls()
-        server.login("SiteAlertMailNotification@gmail.com", "SiteAlertMailNotificatio")
+        server.login(mail, psw)
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
@@ -161,8 +156,7 @@ def sendMail(f, nameSite, link):
             server.sendmail("SiteAlertMailNotification@gmail.com", address, msg)
         server.close()
         for t in telegram:
-            startTelegram(True, t[0], subj + " Link: " + link)
-        startTelegram(False)
+            tb.send_message(t[0], subj + "\nLink: " + link)
     except smtplib.SMTPRecipientsRefused:
         print("Error with the e-mail destination address.")
 
