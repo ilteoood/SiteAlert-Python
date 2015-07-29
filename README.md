@@ -40,6 +40,7 @@ All rights reserved.
 - registrami -> associates the e-mail and the telegram user
 - registrato -> check the registration process
 - cancellami -> delete the registration
+- link -> show the association between name and link
 - ping -> bot service test
 
 Don't know where to host this service? No problem!

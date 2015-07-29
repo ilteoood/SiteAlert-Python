@@ -34,8 +34,8 @@ import time
 import sys
 import platform
 import telebot
-from os.path import expanduser
 
+from os.path import expanduser
 from bs4 import BeautifulSoup
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
@@ -48,8 +48,6 @@ header = [('User-Agent',
           ('Connection', 'keep-alive')]
 TOKEN = 'YOUR TOKEN HERE'
 tb = telebot.TeleBot(TOKEN)
-mail = 'YOUR MAIL HERE'
-psw = 'YOUR PASSWORD HERE'
 
 
 def clearScreen():
@@ -147,13 +145,13 @@ def sendMail(f, nameSite, link):
     try:
         server = smtplib.SMTP("smtp.gmail.com:587")
         server.starttls()
-        server.login(mail, psw)
+        server.login('YOUR E-MAIL ADDR HERE', 'YOUR PSW HERE')
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         telegram = f.execute("SELECT telegram FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         for address in mail:
-            server.sendmail("SiteAlertMailNotification@gmail.com", address, msg)
+            server.sendmail("YOUR E-MAIL ADDR HERE", address, msg)
         server.close()
         for t in telegram:
             tb.send_message(t[0], subj + "\nLink: " + link)

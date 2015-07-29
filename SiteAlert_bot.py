@@ -63,7 +63,7 @@ def listener(messages):
                     if credentials is not None:
                         f.execute(
                             "INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (
-                            param[1], credentials[0], m.chat.id))
+                                param[1], credentials[0], m.chat.id))
                         tb.send_message(m.chat.id, "Action completed successfully!")
                     else:
                         tb.send_message(m.chat.id, "User not registered!")
@@ -71,7 +71,7 @@ def listener(messages):
                 if len(param) > 2:
                     if credentials is None or param[2] == credentials[0]:
                         f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (
-                        param[2], param[1])).fetchall()
+                            param[2], param[1])).fetchall()
                         tb.send_message(m.chat.id, "Action completed successfully!")
                     else:
                         tb.send_message(m.chat.id, "Not allowed to use this mail.")
@@ -79,7 +79,7 @@ def listener(messages):
                     if credentials is not None:
                         f.execute(
                             "DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (
-                            credentials[0], param[1])).fetchall()
+                                credentials[0], param[1])).fetchall()
                         tb.send_message(m.chat.id, "Action completed successfully!")
                     else:
                         tb.send_message(m.chat.id, "User not registered!")
@@ -107,9 +107,12 @@ def listener(messages):
             elif mymsg == "cancellami":
                 f.execute("DELETE from Users WHERE telegram = \"%s\"" % (m.chat.id))
                 tb.send_message(m.chat.id, "Registration deleted successfully!")
+            elif mymsg.startswith("link"):
+                link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (param[1])).fetchone()
+                tb.send_message(m.chat.id, "A " + param[1] + " corrisponde: " + link[0])
             else:
                 tb.send_message(m.chat.id,
-                                "Ciao, " + m.chat.first_name + " " + m.chat.last_name + "!\nBenvenuto nel bot di SiteAlert.\nComandi disponibili:\ncontrolla _link_ chiamandolo _nome_ avvisandomi _mail_\naggiungimi _nome_ avvisandomi _mail_\nmostra\nrimuovimi _nome_ _mail_\nregistrami _mail_\nregistrato\ncancellami\nTest: ping")
+                                "Ciao, " + m.chat.first_name + " " + m.chat.last_name + "!\nBenvenuto nel bot di SiteAlert.\nComandi disponibili:\ncontrolla _link_ chiamandolo _nome_ avvisandomi _mail_\naggiungimi _nome_ avvisandomi _mail_\nmostra\nrimuovimi _nome_ _mail_\nregistrami _mail_\nregistrato\ncancellami\nlink _name_\nTest: ping")
             f.commit()
             f.close()
         else:
@@ -120,7 +123,7 @@ tb = telebot.TeleBot(TOKEN)
 tb.set_update_listener(listener)  # register listener
 tb.polling()
 tb.polling(none_stop=True)
-tb.polling(interval=3)
+tb.polling(interval=1)
 
 while True:  # Don't let the main Thread end.
     pass
