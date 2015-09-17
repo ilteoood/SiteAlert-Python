@@ -101,7 +101,7 @@ def stdURL(site):
 
 
 def URLEncode(read):
-    read = BeautifulSoup(read)
+    read = BeautifulSoup(read, "html.parser")
     return hashlib.md5(bytes(read.get_text(), 'utf-8')).hexdigest()
 
 

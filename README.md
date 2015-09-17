@@ -33,15 +33,16 @@ All rights reserved.
 ------------------------
 ### List of the available bot commands:
 
-- mostra -> show the list of the sites
-- controlla -> add a new site
-- aggiungimi -> add new e-mail address
-- rimuovimi -> delete an e-mail address
-- registrami -> associates the e-mail and the telegram user
-- registrato -> check the registration process
-- cancellami -> delete the registration
-- link -> show the association between name and link
-- ping -> bot service test
+ping -> Pong
+show -> Print the list of saved sites
+check -> Check new website
+addme -> Notify me on an already registered site
+removeme -> Reverse action
+register -> Register your email
+registered -> Check if you are alredy registered, and show your subscribed sites
+link -> Print the link associated to a website
+help -> Print help message
+cancel -> Remove previous task
 
 Don't know where to host this service? No problem!
 
@@ -52,7 +53,7 @@ Speak with the official bot, [@SiteAlert_bot][4]!
 > ###Requirements: 
 > Requires beautifulsoup4 to be executed, if you want to install it, see [this][1]
 
-> To use the Telegram notification, you must install pyTelegramBotAPI. For further information see [this][2] amazing project and my [SiteAlert_bot.py][3] script to create and interact with a Telegram bot. (Will be translated in English)
+> To use the Telegram notification, you must install pyTelegramBotAPI. For further information see [this][2] amazing project and my [SiteAlert_bot.py][3] script to create and interact with a Telegram bot.
 
 **NOTE: this function will work only under Linux or Mac OS X systems.**
 
