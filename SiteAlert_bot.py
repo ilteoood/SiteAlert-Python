@@ -41,7 +41,7 @@ def listener(messages):
             if not m.text.startswith("/") and m.chat.id in Array:
                 if credentials is not None:
                     if Array[m.chat.id] == "check":
-                        if not (m.chat.id, 0) in Array or Array[m.chat.id, 0] != "":
+                        if not (m.chat.id, 0) in Array or Array[m.chat.id, 0] == "":
                             Array[m.chat.id, 0] = m.text
                             tb.send_message(m.chat.id, "Ok, got it.\nNow send the link of the website:")
                         else:
