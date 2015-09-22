@@ -47,6 +47,8 @@ header = [('User-Agent',
           ('Accept-Language', 'en-US,en;q=0.8'),
           ('Connection', 'keep-alive')]
 TOKEN = 'YOUR TOKEN HERE'
+MAIL = 'YOUR MAIL HERE'
+PSW = 'YOUR PASSWORD HERE'
 tb = telebot.TeleBot(TOKEN)
 
 
@@ -143,9 +145,10 @@ def addSite(f, nameSite, link, mail='', telegram=''):
 
 def sendMail(f, nameSite, link):
     try:
+        global MAIL, PSW
         server = smtplib.SMTP("smtp.gmail.com:587")
         server.starttls()
-        server.login('YOUR E-MAIL ADDR HERE', 'YOUR PSW HERE')
+        server.login(MAIL, PSW)
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
@@ -157,6 +160,8 @@ def sendMail(f, nameSite, link):
             tb.send_message(t[0], subj + "\nLink: " + link)
     except smtplib.SMTPRecipientsRefused:
         print("Error with the e-mail destination address.")
+    except smtplib.SMTPAuthenticationError:
+        print("Error in the login process")
 
 
 def checkSite(f, dirs):

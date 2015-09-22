@@ -10,7 +10,7 @@ from io import StringIO
 from os.path import expanduser
 from telebot import types
 
-TOKEN = ''
+TOKEN = 'YOUR TOKEN HERE'
 db = expanduser("~") + os.sep + "SiteAlert.db"
 leng = ""
 f = sqlite3.connect(db, check_same_thread=False)
