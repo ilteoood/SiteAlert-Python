@@ -33,9 +33,9 @@ import smtplib
 import time
 import sys
 import platform
-import telebot
-
 from os.path import expanduser
+
+import telebot
 from bs4 import BeautifulSoup
 
 db = expanduser("~") + os.sep + "SiteAlert.db"
@@ -113,8 +113,8 @@ def saveFile(f, nameSite, link, mail, telegram, hash):
             nameSite, link, hash))
         mail = mail.split(";");
         for m in mail:
-            f.execute("INSERT INTO Registered (name, mail, telegram) VALUES (\"%s\",\"%s\", \"%s\")" % (
-                nameSite, m, telegram))
+            f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (
+                nameSite, m))
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
     f.commit()
@@ -152,12 +152,11 @@ def sendMail(f, nameSite, link):
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
-        telegram = f.execute("SELECT telegram FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         for address in mail:
-            server.sendmail("YOUR E-MAIL ADDR HERE", address, msg)
-        server.close()
-        for t in telegram:
+            server.sendmail(MAIL, address, msg)
+            t = f.execute("SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (nameSite)).fetchone()
             tb.send_message(t[0], subj + "\nLink: " + link)
+        server.close()
     except smtplib.SMTPRecipientsRefused:
         print("Error with the e-mail destination address.")
     except smtplib.SMTPAuthenticationError:
@@ -208,7 +207,7 @@ def main():
         f.execute(
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
         f.execute(
-            "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, 'telegram' TEXT, PRIMARY KEY(name, mail));")
+            "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
         f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL, PRIMARY KEY (mail));")
         f.close()
     f = sqlite3.connect(db)
@@ -265,7 +264,7 @@ def main():
                 nameSite = dirs[numberReq(leng, dirs) - 1][0]
                 mail = input("Insert e-mail: ")
                 if x == 5:
-                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (nameSite, mail, "")).fetchall()
+                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (nameSite, mail, "")).fetchall()
                 else:
                     f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (mail, nameSite)).fetchall()
                 f.commit()

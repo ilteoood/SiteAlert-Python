@@ -1,14 +1,15 @@
 __author__ = 'ilteoood'
 
 import sys
-import SiteAlert
-import telebot
 import sqlite3
 import os
-
 from io import StringIO
 from os.path import expanduser
+
+import telebot
 from telebot import types
+
+import SiteAlert
 
 TOKEN = 'YOUR TOKEN HERE'
 db = expanduser("~") + os.sep + "SiteAlert.db"
@@ -73,28 +74,22 @@ def listener(messages):
                         if Array[m.chat.id] == "register":
                             if not m.text.startswith("/"):
                                 try:
-                                    f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
+                                    f.execute(
+                                        "INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
                                     f.commit()
                                     tb.send_message(m.chat.id, "Action completed successfully!")
                                 except sqlite3.IntegrityError:
                                     tb.send_message(m.chat.id, "E-mail already registered.")
                 if m.chat.id in Array and Array[m.chat.id] == "link":
-                        link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
-                        tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=markup)
-                        Array[m.chat.id] = ""
+                    link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
+                    tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=markup)
+                    Array[m.chat.id] = ""
         else:
             tb.send_message(m.chat.id, "Data not allowed.")
 
 
 tb = telebot.TeleBot(TOKEN)
 tb.set_update_listener(listener)
-
-
-def addDirMarkup(markup):
-    global f
-    dirs = f.execute("SELECT name FROM SiteAlert ORDER BY name").fetchall()
-    for dir in dirs:
-        markup.add(dir[0])
 
 
 @tb.message_handler(commands=['ping'])
@@ -125,7 +120,11 @@ def addme(m):
     if credentials is not None:
         Array[m.chat.id] = "addme"
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        addDirMarkup(markup)
+        dirs = f.execute(
+            "SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = \"%d\" ORDER BY name" % (
+            m.chat.id)).fetchall()
+        for dir in dirs:
+            markup.add(dir[0])
         tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -138,7 +137,11 @@ def removeme(m):
     if credentials is not None:
         Array[m.chat.id] = "removeme"
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        addDirMarkup(markup)
+        dirs = f.execute(
+            "SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = \"%d\" ORDER BY name" % (
+            m.chat.id)).fetchall()
+        for dir in dirs:
+            markup.add(dir[0])
         tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -168,10 +171,12 @@ def registered(m):
 
 @tb.message_handler(commands=['link'])
 def link(m):
-    global Array
+    global Array, f
     Array[m.chat.id] = "link"
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    addDirMarkup(markup)
+    dirs = f.execute("SELECT name FROM SiteAlert ORDER BY name").fetchall()
+    for dir in dirs:
+        markup.add(dir[0])
     tb.send_message(m.chat.id, "Of which site?", reply_markup=markup)
 
 
