@@ -33,6 +33,7 @@ import smtplib
 import time
 import sys
 import platform
+import re
 from os.path import expanduser
 
 import telebot
@@ -104,7 +105,9 @@ def stdURL(site):
 
 def URLEncode(read):
     read = BeautifulSoup(read, "html.parser")
-    return hashlib.md5(bytes(read.get_text(), 'utf-8')).hexdigest()
+    read = re.sub("<!--[\s\S]*?-->", "", read.get_text())
+    read = re.sub("(?s)/\\*.*?\\*/", "", read)
+    return hashlib.md5(bytes(read, 'utf-8')).hexdigest()
 
 
 def saveFile(f, nameSite, link, mail, telegram, hash):
@@ -154,7 +157,9 @@ def sendMail(f, nameSite, link):
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         for address in mail:
             server.sendmail(MAIL, address, msg)
-            t = f.execute("SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (nameSite)).fetchone()
+            t = f.execute(
+                "SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (
+                nameSite)).fetchone()
             tb.send_message(t[0], subj + "\nLink: " + link)
         server.close()
     except smtplib.SMTPRecipientsRefused:
