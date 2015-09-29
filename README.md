@@ -55,7 +55,6 @@ Speak with the official bot, [@SiteAlert_bot][4]!
 
 > To use the Telegram notification, you must install pyTelegramBotAPI. For further information see [this][2] amazing project and my [SiteAlert_bot.py][3] script to create and interact with a Telegram bot.
 
-**NOTE: this function will work only under Linux or Mac OS X systems.**
 
 ------------------------
 ###License:

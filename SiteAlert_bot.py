@@ -16,6 +16,7 @@ db = expanduser("~") + os.sep + "SiteAlert.db"
 leng = ""
 f = sqlite3.connect(db, check_same_thread=False)
 Array = {}
+gen_markup = types.ReplyKeyboardHide(selective=False)
 
 
 def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
@@ -33,63 +34,7 @@ def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
     return result.getvalue()
 
 
-def listener(messages):
-    for m in messages:
-        if m.content_type == 'text':
-            global Array, Matrix, f
-            credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
-            markup = types.ReplyKeyboardHide(selective=False)
-            if not m.text.startswith("/") and m.chat.id in Array:
-                if credentials is not None:
-                    if Array[m.chat.id] == "check":
-                        if not (m.chat.id, 0) in Array or Array[m.chat.id, 0] == "":
-                            Array[m.chat.id, 0] = m.text
-                            tb.send_message(m.chat.id, "Ok, got it.\nNow send the link of the website:")
-                        else:
-                            tb.send_message(m.chat.id,
-                                            overrideStdout("check", m, credentials, Array[m.chat.id, 0], m.text))
-                            Array[m.chat.id] = ""
-                            Array[m.chat.id, 0] = ""
-                    elif Array[m.chat.id] == "addme":
-                        try:
-                            f.execute(
-                                "INSERT INTO Registered VALUES(\"%s\", \"%s\",\"%s\")" % (
-                                    m.text, credentials[0], m.chat.id))
-                            tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=markup)
-                        except sqlite3.IntegrityError:
-                            tb.send_message(m.chat.id, "You are already registered to this site!", reply_markup=markup)
-                        Array[m.chat.id] = ""
-                    elif Array[m.chat.id] == "removeme":
-                        f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (
-                            credentials[0], m.text)).fetchall()
-                        tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=markup)
-                        Array[m.chat.id] = ""
-                    elif Array[m.chat.id] == "register":
-                        f.execute("UPDATE Users SET mail = \"%s\" WHERE telegram =\"%s\"" % (m.text, m.chat.id))
-                        tb.send_message(m.chat.id, "Action completed successfully!")
-                        Array[m.chat.id] = ""
-                    f.commit()
-                else:
-                    if m.chat.id in Array:
-                        if Array[m.chat.id] == "register":
-                            if not m.text.startswith("/"):
-                                try:
-                                    f.execute(
-                                        "INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
-                                    f.commit()
-                                    tb.send_message(m.chat.id, "Action completed successfully!")
-                                except sqlite3.IntegrityError:
-                                    tb.send_message(m.chat.id, "E-mail already registered.")
-                if m.chat.id in Array and Array[m.chat.id] == "link":
-                    link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
-                    tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=markup)
-                    Array[m.chat.id] = ""
-        else:
-            tb.send_message(m.chat.id, "Data not allowed.")
-
-
 tb = telebot.TeleBot(TOKEN)
-tb.set_update_listener(listener)
 
 
 @tb.message_handler(commands=['ping'])
@@ -104,54 +49,94 @@ def show(m):
 
 @tb.message_handler(commands=['check'])
 def check(m):
-    global Array, f
+    global f
     credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
     if credentials is not None:
-        Array[m.chat.id] = "check"
-        tb.send_message(m.chat.id, "Ok, how we should call it?")
+        msg = tb.send_message(m.chat.id, "Ok, how we should call it?")
+        tb.register_next_step_handler(msg, ck1)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
+def ck1(m):
+    Array[m.chat.id] = m.text
+    msg = tb.send_message(m.chat.id, "Ok, got it.\nNow send the link of the website:")
+    tb.register_next_step_handler(msg, ck2)
+
+
+def ck2(m):
+    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+    tb.send_message(m.chat.id, overrideStdout("check", m, credentials, Array[m.chat.id], m.text))
+    del Array[m.chat.id]
 
 
 @tb.message_handler(commands=['addme'])
 def addme(m):
-    global Array, f
+    global f
     credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
     if credentials is not None:
-        Array[m.chat.id] = "addme"
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         dirs = f.execute(
             "SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = \"%d\" ORDER BY name" % (
-            m.chat.id)).fetchall()
+                m.chat.id)).fetchall()
         for dir in dirs:
             markup.add(dir[0])
-        tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
+        msg = tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
+        tb.register_next_step_handler(msg, am)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
+def am(m):
+    global f, gen_markup
+    markup = types.ReplyKeyboardHide(selective=False)
+    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+    try:
+        f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (m.text, credentials[0]))
+        tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "You are already registered to this site!", reply_markup=gen_markup)
+    f.commit()
 
 
 @tb.message_handler(commands=['removeme'])
 def removeme(m):
-    global Array, f
+    global f
     credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
     if credentials is not None:
-        Array[m.chat.id] = "removeme"
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         dirs = f.execute(
             "SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = \"%d\" ORDER BY name" % (
-            m.chat.id)).fetchall()
+                m.chat.id)).fetchall()
         for dir in dirs:
             markup.add(dir[0])
-        tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
+        msg = tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
+        tb.register_next_step_handler(msg, rm)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
 
 
+def rm(m):
+    global f, gen_markup
+    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+    f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (credentials[0], m.text)).fetchall()
+    tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
+    f.commit()
+
+
 @tb.message_handler(commands=['register'])
 def register(m):
-    global Array
-    Array[m.chat.id] = "register"
-    tb.send_message(m.chat.id, "Tell me your e-mail: ")
+    msg = tb.send_message(m.chat.id, "Tell me your e-mail: ")
+    tb.register_next_step_handler(msg, reg)
+
+
+def reg(m):
+    try:
+        f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+        f.commit()
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "E-mail already registered.")
 
 
 @tb.message_handler(commands=['registered'])
@@ -171,20 +156,23 @@ def registered(m):
 
 @tb.message_handler(commands=['link'])
 def link(m):
-    global Array, f
-    Array[m.chat.id] = "link"
+    global f
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     dirs = f.execute("SELECT name FROM SiteAlert ORDER BY name").fetchall()
     for dir in dirs:
         markup.add(dir[0])
-    tb.send_message(m.chat.id, "Of which site?", reply_markup=markup)
+    msg = tb.send_message(m.chat.id, "Of which site?", reply_markup=markup)
+    tb.register_next_step_handler(msg, lk)
+
+
+def lk(m):
+    global gen_markup
+    link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
+    tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=gen_markup)
 
 
 @tb.message_handler(commands=['cancel'])
 def cancel(m):
-    global Array
-    Array[m.chat.id] = ""
-    Array[m.chat.id, 0] = ""
     markup = types.ReplyKeyboardHide()
     tb.send_message(m.chat.id, "Ok, I forgot everything!", reply_markup=markup)
 
@@ -192,7 +180,7 @@ def cancel(m):
 @tb.message_handler(commands=['help', 'start'])
 def help(m):
     tb.send_message(m.chat.id,
-                    "Hello, " + m.chat.first_name + " " + m.chat.last_name + "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/link - Print the link associated to a website\n/help - Print help message")
+                    "Hello, " + m.from_user.first_name + " " + m.from_user.last_name + "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/link - Print the link associated to a website\n/help - Print help message")
 
 
 tb.polling(none_stop=True)
