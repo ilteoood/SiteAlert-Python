@@ -17,6 +17,7 @@ leng = ""
 f = sqlite3.connect(db, check_same_thread=False)
 Array = {}
 gen_markup = types.ReplyKeyboardHide(selective=False)
+wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/link - Print the link associated to a website\n/help - Print help message"
 
 
 def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
@@ -179,8 +180,12 @@ def cancel(m):
 
 @tb.message_handler(commands=['help', 'start'])
 def help(m):
-    tb.send_message(m.chat.id,
-                    "Hello, " + m.from_user.first_name + " " + m.from_user.last_name + "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/link - Print the link associated to a website\n/help - Print help message")
+    try:
+        tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + " " + m.chat.last_name + wlcm_msg)
+    except AttributeError:
+        tb.send_message(m.chat.id, "Hello, " + m.chat.title + wlcm_msg)
+    except TypeError:
+        tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + wlcm_msg)
 
 
 tb.polling(none_stop=True)
