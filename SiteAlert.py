@@ -33,6 +33,7 @@ import smtplib
 import time
 import sys
 import platform
+import socket
 import re
 from os.path import expanduser
 
@@ -134,7 +135,7 @@ def addSite(f, nameSite, link, mail='', telegram=''):
         link = stdURL(link)
         urli = urllib.request.build_opener()
         urli.addheaders = header
-        urli = urli.open(link)
+        urli = urli.open(link, timeout=10.0)
         responseCode = urli.getcode()
         if responseCode == 200:
             saveFile(f, nameSite, link, mail, telegram, URLEncode(urli.read()))
@@ -144,6 +145,10 @@ def addSite(f, nameSite, link, mail='', telegram=''):
             print("Generic error.")
     except urllib.request.URLError:
         print("There is an error with the link.")
+    except ConnectionResetError:
+        print("[ERROR]: Connection reset by peer: ")
+    except socket.timeout:
+        print("[ERROR]: Connection timeout")
 
 
 def sendMail(f, nameSite, link):
@@ -159,7 +164,7 @@ def sendMail(f, nameSite, link):
             server.sendmail(MAIL, address, msg)
             t = f.execute(
                 "SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (
-                nameSite)).fetchone()
+                    nameSite)).fetchone()
             tb.send_message(t[0], subj + "\nLink: " + link)
         server.close()
     except smtplib.SMTPRecipientsRefused:
@@ -178,7 +183,7 @@ def checkSite(f, dirs):
             urli = urllib.request.build_opener()
             urli.addheaders = header
             try:
-                urli = urli.open(link)
+                urli = urli.open(link, timeout=10.0)
                 if hash == URLEncode(urli.read()):
                     print("The site \"" + dir + "\" hasn't been changed!")
                 else:
@@ -186,7 +191,12 @@ def checkSite(f, dirs):
                     addSite(f, dir, link, "")
                     sendMail(f, dir, link)
             except urllib.error.URLError:
-                print("[ERROR]: Network error.")
+                print("[ERROR]: Network error: " + dir)
+            except ConnectionResetError:
+                print("[ERROR]: Connection reset by peer: " + dir)
+            except socket.timeout:
+                print("[ERROR]: Connection timeout: " + dir)
+
     else:
         print("You haven't checked any site.")
         return True
