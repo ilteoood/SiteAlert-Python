@@ -1,8 +1,9 @@
-__author__ = 'ilteoood'
+__author__ = 'iLTeoooD'
 
 import sys
 import sqlite3
 import os
+import re
 from io import StringIO
 from os.path import expanduser
 
@@ -60,15 +61,17 @@ def check(m):
 
 
 def ck1(m):
-    Array[m.chat.id] = m.text
-    msg = tb.send_message(m.chat.id, "Ok, got it.\nNow send the link of the website:")
-    tb.register_next_step_handler(msg, ck2)
+    if not m.text.startswith("/"):
+        Array[m.chat.id] = m.text
+        msg = tb.send_message(m.chat.id, "Ok, got it.\nNow send the link of the website:")
+        tb.register_next_step_handler(msg, ck2)
 
 
 def ck2(m):
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
-    tb.send_message(m.chat.id, overrideStdout("check", m, credentials, Array[m.chat.id], m.text))
-    del Array[m.chat.id]
+    if not m.text.startswith("/"):
+        credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+        tb.send_message(m.chat.id, overrideStdout("check", m, credentials, Array[m.chat.id], m.text))
+        del Array[m.chat.id]
 
 
 @tb.message_handler(commands=['addme'])
@@ -89,15 +92,17 @@ def addme(m):
 
 
 def am(m):
-    global f, gen_markup
-    markup = types.ReplyKeyboardHide(selective=False)
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
-    try:
-        f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (m.text, credentials[0]))
-        tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
-    except sqlite3.IntegrityError:
-        tb.send_message(m.chat.id, "You are already registered to this site!", reply_markup=gen_markup)
-    f.commit()
+    if not m.text.startswith("/"):
+        global f, gen_markup
+        credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+        try:
+            f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (m.text, credentials[0]))
+            tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
+        except sqlite3.IntegrityError:
+            tb.send_message(m.chat.id, "You are already registered to this site!", reply_markup=gen_markup)
+        f.commit()
+    else:
+        tb.send_message(m.chat.id, "Invalid input.")
 
 
 @tb.message_handler(commands=['removeme'])
@@ -118,11 +123,14 @@ def removeme(m):
 
 
 def rm(m):
-    global f, gen_markup
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
-    f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (credentials[0], m.text)).fetchall()
-    tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
-    f.commit()
+    if not m.text.startswith("/"):
+        global f, gen_markup
+        credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+        f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (credentials[0], m.text)).fetchall()
+        tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
+        f.commit()
+    else:
+        tb.send_message(m.chat.id, "Invalid input.")
 
 
 @tb.message_handler(commands=['register'])
@@ -133,11 +141,14 @@ def register(m):
 
 def reg(m):
     try:
-        f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
-        tb.send_message(m.chat.id, "Action completed successfully!")
-        f.commit()
+        if re.match("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", m.text) is not None:
+            f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
+            tb.send_message(m.chat.id, "Action completed successfully!")
+            f.commit()
+        else:
+            tb.send_message(m.chat.id, "Invalid e-mail.")
     except sqlite3.IntegrityError:
-        tb.send_message(m.chat.id, "E-mail already registered.")
+        tb.send_message(m.chat.id, "User or e-mail already registered.\n")
 
 
 @tb.message_handler(commands=['registered'])
@@ -168,14 +179,17 @@ def link(m):
 
 def lk(m):
     global gen_markup
-    link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
-    tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=gen_markup)
+    try:
+        link = f.execute("SELECT link FROM SiteAlert WHERE name = \"%s\"" % (m.text)).fetchone()
+        tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=gen_markup)
+    except Exception:
+        tb.send_message(m.chat.id, "Invalid link.", reply_markup=gen_markup)
 
 
 @tb.message_handler(commands=['cancel'])
 def cancel(m):
-    markup = types.ReplyKeyboardHide()
-    tb.send_message(m.chat.id, "Ok, I forgot everything!", reply_markup=markup)
+    global gen_markup
+    tb.send_message(m.chat.id, "Ok, I forgot everything!", reply_markup=gen_markup)
 
 
 @tb.message_handler(commands=['help', 'start'])

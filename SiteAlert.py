@@ -223,7 +223,7 @@ def main():
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
         f.execute(
             "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
-        f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL, PRIMARY KEY (mail));")
+        f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL UNIQUE, PRIMARY KEY (mail));")
         f.close()
     f = sqlite3.connect(db)
     while True:
