@@ -152,23 +152,25 @@ def addSite(f, nameSite, link, mail='', telegram=''):
 
 
 def sendMail(f, nameSite, link):
+    global MAIL, PSW
+    server = smtplib.SMTP("smtp.gmail.com:587")
+    server.starttls()
     try:
-        global MAIL, PSW
-        server = smtplib.SMTP("smtp.gmail.com:587")
-        server.starttls()
         server.login(MAIL, PSW)
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
         for address in mail:
-            server.sendmail(MAIL, address, msg)
-            t = f.execute(
-                "SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (
-                    nameSite)).fetchone()
-            tb.send_message(t[0], subj + "\nLink: " + link)
+            try:
+                server.sendmail(MAIL, address, msg)
+            except smtplib.SMTPRecipientsRefused:
+                print("Error with this e-mail destination address: " + address)
         server.close()
-    except smtplib.SMTPRecipientsRefused:
-        print("Error with the e-mail destination address.")
+        telegram = f.execute(
+            "SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (
+            nameSite)).fetchall()
+        for t in telegram:
+            tb.send_message(t[0], subj + "\nLink: " + link)
     except smtplib.SMTPAuthenticationError:
         print("Error in the login process")
 
