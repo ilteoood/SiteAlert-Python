@@ -18,7 +18,7 @@ leng = ""
 f = sqlite3.connect(db, check_same_thread=False)
 Array = {}
 gen_markup = types.ReplyKeyboardHide(selective=False)
-wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/link - Print the link associated to a website\n/help - Print help message"
+wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/unregister - Delete your registration\n/link - Print the link associated to a website\n/help - Print help message"
 
 
 def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
@@ -135,20 +135,23 @@ def rm(m):
 
 @tb.message_handler(commands=['register'])
 def register(m):
-    msg = tb.send_message(m.chat.id, "Tell me your e-mail: ")
-    tb.register_next_step_handler(msg, reg)
+    global f
+    credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
+    if credentials is None:
+        msg = tb.send_message(m.chat.id, "Tell me your e-mail: ")
+        tb.register_next_step_handler(msg, reg)
+    else:
+        tb.send_message(m.chat.id, "User already registered.\nUse /registered")
 
 
 def reg(m):
-    try:
-        if re.match("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", m.text) is not None:
-            f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
-            tb.send_message(m.chat.id, "Action completed successfully!")
-            f.commit()
-        else:
-            tb.send_message(m.chat.id, "Invalid e-mail.")
-    except sqlite3.IntegrityError:
-        tb.send_message(m.chat.id, "User or e-mail already registered.\n")
+    global f
+    if re.match("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", m.text) is not None:
+        f.execute("INSERT INTO Users VALUES(\"%s\",\"%s\")" % (m.text, m.chat.id)).fetchall()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+        f.commit()
+    else:
+        tb.send_message(m.chat.id, "Invalid e-mail.")
 
 
 @tb.message_handler(commands=['registered'])
@@ -186,6 +189,19 @@ def lk(m):
         tb.send_message(m.chat.id, "Invalid link.", reply_markup=gen_markup)
 
 
+@tb.message_handler(commands=['unregister'])
+def unregister(m):
+    global gen_markup, f
+    mail = f.execute("SELECT mail FROM Users WHERE telegram = \"%s\"" % m.chat.id).fetchone()
+    if mail is not None:
+        f.execute("DELETE FROM USers WHERE mail = \"%s\"" % mail)
+        f.execute("DELETE FROM Registered WHERE mail = \"%s\"" % mail)
+        f.commit()
+        tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
+    else:
+        tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
 @tb.message_handler(commands=['cancel'])
 def cancel(m):
     global gen_markup
@@ -197,9 +213,9 @@ def help(m):
     try:
         tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + " " + m.chat.last_name + wlcm_msg)
     except AttributeError:
-        tb.send_message(m.chat.id, "Hello, " + m.chat.title + wlcm_msg)
-    except TypeError:
         tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + wlcm_msg)
+    except TypeError:
+        tb.send_message(m.chat.id, "Hello, " + m.chat.title + wlcm_msg)
 
 
 tb.polling(none_stop=True)
