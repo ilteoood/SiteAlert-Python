@@ -159,7 +159,9 @@ def sendMail(f, nameSite, link):
         server.login(MAIL, PSW)
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
-        mail = f.execute("SELECT mail FROM Registered WHERE name=\"%s\"" % (nameSite)).fetchall()
+        mail = f.execute(
+            "SELECT Registered.mail FROM Users, Registered WHERE Registered.mail = Users.mail AND mailnotification = 'True' AND name=\"%s\"" % (
+                nameSite)).fetchall()
         for address in mail:
             try:
                 server.sendmail(MAIL, address, msg)
@@ -167,8 +169,8 @@ def sendMail(f, nameSite, link):
                 print("Error with this e-mail destination address: " + address)
         server.close()
         telegram = f.execute(
-            "SELECT telegram FROM Users, Registered WHERE name=\"%s\" AND Users.mail = Registered.mail" % (
-            nameSite)).fetchall()
+            "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=\"%s\" AND Users.mail = Registered.mail" % (
+                nameSite)).fetchall()
         for t in telegram:
             tb.send_message(t[0], subj + "\nLink: " + link)
     except smtplib.SMTPAuthenticationError:
@@ -225,7 +227,8 @@ def main():
             "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
         f.execute(
             "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
-        f.execute("CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL UNIQUE, PRIMARY KEY (mail));")
+        f.execute(
+            "CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL UNIQUE, 'mailnotification' BOOLEAN NOT NULL DEFAULT TRUE, 'telegramnotification' BOOLEAN NOT NULL DEFAULT TRUE, PRIMARY KEY (mail));")
         f.close()
     f = sqlite3.connect(db)
     while True:

@@ -18,7 +18,7 @@ leng = ""
 f = sqlite3.connect(db, check_same_thread=False)
 Array = {}
 gen_markup = types.ReplyKeyboardHide(selective=False)
-wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/unregister - Delete your registration\n/link - Print the link associated to a website\n/help - Print help message"
+wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/unregister - Delete your registration\n/link - Print the link associated to a website\n/mailoff - Disable mail notification\n/mailon - Reverse action\n/telegramoff - Disable telegram notification\n/telegramon - Reverse action\n/help - Print help message"
 
 
 def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
@@ -160,7 +160,11 @@ def registered(m):
     i = 1
     credentials = f.execute("SELECT mail FROM Users WHERE telegram =\"%s\"" % (m.chat.id)).fetchone()
     if credentials is not None:
-        mymsg = "You have registered this e-mail: " + credentials[0] + "\nYou are registered to:"
+        mymsg = "You have registered this e-mail: " + credentials[0] + "\nYour notification status is:\nE-mail: "
+        status = f.execute("SELECT mailnotification FROM Users WHERE mail = \"%s\"" % credentials).fetchone()
+        mymsg += status[0] + "\nTelegram: "
+        status = f.execute("SELECT telegramnotification FROM Users WHERE mail = \"%s\"" % credentials).fetchone()
+        mymsg += status[0] + "\n You are registered to:"
         for site in f.execute("SELECT name FROM Registered WHERE mail = \"%s\"" % (credentials[0])).fetchall():
             mymsg = mymsg + "\n" + str(i) + ") " + site[0]
             i += 1
@@ -202,6 +206,50 @@ def unregister(m):
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
 
 
+@tb.message_handler(commands=['mailoff'])
+def mailoff(m):
+    global f
+    try:
+        f.execute("UPDATE Users SET mailnotification = 'False' WHERE telegram = \"%s\"" % m.chat.id)
+        f.commit()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
+@tb.message_handler(commands=['mailon'])
+def mailon(m):
+    global f
+    try:
+        f.execute("UPDATE Users SET mailnotification = 'True' WHERE telegram = \"%s\"" % m.chat.id)
+        f.commit()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
+@tb.message_handler(commands=['telegramoff'])
+def mailon(m):
+    global f
+    try:
+        f.execute("UPDATE Users SET telegramnotification = 'False' WHERE telegram = \"%s\"" % m.chat.id)
+        f.commit()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
+@tb.message_handler(commands=['telegramon'])
+def mailon(m):
+    global f
+    try:
+        f.execute("UPDATE Users SET telegramnotification = 'True' WHERE telegram = \"%s\"" % m.chat.id)
+        f.commit()
+        tb.send_message(m.chat.id, "Action completed successfully!")
+    except sqlite3.IntegrityError:
+        tb.send_message(m.chat.id, "You must be registered.\nUse /register")
+
+
 @tb.message_handler(commands=['cancel'])
 def cancel(m):
     global gen_markup
@@ -210,11 +258,12 @@ def cancel(m):
 
 @tb.message_handler(commands=['help', 'start'])
 def help(m):
-    try:
-        tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + " " + m.chat.last_name + wlcm_msg)
-    except AttributeError:
-        tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + wlcm_msg)
-    except TypeError:
+    if m.chat.first_name is not None:
+        if m.chat.last_name is not None:
+            tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + " " + m.chat.last_name + wlcm_msg)
+        else:
+            tb.send_message(m.chat.id, "Hello, " + m.chat.first_name + wlcm_msg)
+    else:
         tb.send_message(m.chat.id, "Hello, " + m.chat.title + wlcm_msg)
 
 
