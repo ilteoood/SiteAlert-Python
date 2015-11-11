@@ -33,16 +33,33 @@ All rights reserved.
 ------------------------
 ### List of the available bot commands:
 
-ping -> Pong
-show -> Print the list of saved sites
-check -> Check new website
-addme -> Notify me on an already registered site
-removeme -> Reverse action
-register -> Register your email
-registered -> Check if you are alredy registered, and show your subscribed sites
-link -> Print the link associated to a website
-help -> Print help message
-cancel -> Remove previous task
+ping - Pong
+
+show - Print the list of saved sites
+
+check - Check new website
+
+addme - Notify me on an already registered site
+
+removeme - Reverse action
+
+register - Register your email
+
+registered - Check if you are alredy registered, and show your subscribed sites
+
+unregister - Delete your registration
+
+link - Print the link associated to a website
+
+mailoff - Disable mail notification
+
+mailon - Reverse action
+
+telegramoff - Disable telegram notification
+
+telegramon - Reverse action
+
+help - Print help message
 
 Don't know where to host this service? No problem!
 

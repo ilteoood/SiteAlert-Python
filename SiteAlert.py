@@ -94,7 +94,7 @@ def cleanDB(f):
     nameSite = f.execute("SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered GROUP BY name").fetchall()
     for name in nameSite:
         print("Removing %s..." % (name))
-        f.execute("DELETE FROM SiteAlert WHERE name = \"%s\"" % (name))
+        f.execute("DELETE FROM SiteAlert WHERE name = ?", (name,))
     f.commit()
 
 
@@ -113,14 +113,14 @@ def URLEncode(read):
 
 def saveFile(f, nameSite, link, mail, telegram, hash):
     try:
-        f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (\"%s\",\"%s\",\"%s\")" % (
+        f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (?,?,?)", (
             nameSite, link, hash))
         mail = mail.split(";");
         for m in mail:
-            f.execute("INSERT INTO Registered (name, mail) VALUES (\"%s\",\"%s\")" % (
+            f.execute("INSERT INTO Registered (name, mail) VALUES (?,?)", (
                 nameSite, m))
     except sqlite3.IntegrityError:
-        f.execute("UPDATE SiteAlert SET hash=\"%s\" WHERE name=\"%s\"" % (hash, nameSite))
+        f.execute("UPDATE SiteAlert SET hash=? WHERE name=?", (hash, nameSite))
     f.commit()
     print("Site saved correctly!")
 
@@ -160,8 +160,8 @@ def sendMail(f, nameSite, link):
         subj = "The site \"" + nameSite + "\" has been changed!"
         msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
         mail = f.execute(
-            "SELECT Registered.mail FROM Users, Registered WHERE Registered.mail = Users.mail AND mailnotification = 'True' AND name=\"%s\"" % (
-                nameSite)).fetchall()
+            "SELECT Registered.mail FROM Users, Registered WHERE Registered.mail = Users.mail AND mailnotification = 'True' AND name=?",
+            (nameSite,)).fetchall()
         for address in mail:
             try:
                 server.sendmail(MAIL, address, msg)
@@ -169,8 +169,8 @@ def sendMail(f, nameSite, link):
                 print("Error with this e-mail destination address: " + address)
         server.close()
         telegram = f.execute(
-            "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=\"%s\" AND Users.mail = Registered.mail" % (
-                nameSite)).fetchall()
+            "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=? AND Users.mail = Registered.mail",
+            (nameSite,)).fetchall()
         for t in telegram:
             tb.send_message(t[0], subj + "\nLink: " + link)
     except smtplib.SMTPAuthenticationError:
@@ -284,9 +284,9 @@ def main():
                 nameSite = dirs[numberReq(leng, dirs) - 1][0]
                 mail = input("Insert e-mail: ")
                 if x == 5:
-                    f.execute("INSERT INTO Registered VALUES(\"%s\", \"%s\")" % (nameSite, mail, "")).fetchall()
+                    f.execute("INSERT INTO Registered VALUES(?, ?)", (nameSite, mail)).fetchall()
                 else:
-                    f.execute("DELETE FROM Registered WHERE mail=\"%s\" AND name=\"%s\"" % (mail, nameSite)).fetchall()
+                    f.execute("DELETE FROM Registered WHERE mail=? AND name=?", (mail, nameSite)).fetchall()
                 f.commit()
                 print("Action completed successfully!")
             else:
