@@ -94,7 +94,7 @@ def cleanDB(f):
     nameSite = f.execute("SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered GROUP BY name").fetchall()
     for name in nameSite:
         print("Removing %s..." % (name))
-        f.execute("DELETE FROM SiteAlert WHERE name = ?", (name,))
+        f.execute("DELETE FROM SiteAlert WHERE name = ?", (name[0],))
     f.commit()
 
 
