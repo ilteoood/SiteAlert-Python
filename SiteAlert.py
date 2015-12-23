@@ -172,7 +172,13 @@ def sendMail(f, nameSite, link):
             "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=? AND Users.mail = Registered.mail",
             (nameSite,)).fetchall()
         for t in telegram:
-            tb.send_message(t[0], subj + "\nLink: " + link)
+            try:
+                tb.send_message(t[0], subj + "\nLink: " + link)
+            except telebot.apihelper.ApiException:
+                print("Bot kicked from " + t[0], ", removing from DB...")
+                f.execute("DELETE FROM Registered WHERE mail = (SELECT mail FROM Users WHERE telegram = ?)", (t[0],))
+                f.execute("DELETE FROM Users WHERE telegram = ?", (t[0],))
+                f.commit()
     except smtplib.SMTPAuthenticationError:
         print("Error in the login process")
 
