@@ -119,10 +119,12 @@ def saveFile(f, nameSite, link, mail, telegram, hash):
         for m in mail:
             f.execute("INSERT INTO Registered (name, mail) VALUES (?,?)", (
                 nameSite, m))
+        print("Site saved correctly!")
     except sqlite3.IntegrityError:
         f.execute("UPDATE SiteAlert SET hash=? WHERE name=?", (hash, nameSite))
+        print("Already exist a site with this credentials.")
     f.commit()
-    print("Site saved correctly!")
+
 
 
 def addSite(f, nameSite, link, mail='', telegram=''):
