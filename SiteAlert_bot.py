@@ -98,8 +98,7 @@ def addme(m):
 def am(m):
     global f, gen_markup
     dirs = f.execute("SELECT * FROM SiteAlert WHERE name=?", (m.text,)).fetchall()
-    l = len(dirs)
-    if l > 0:
+    if len(dirs) > 0:
         credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
         try:
             f.execute("INSERT INTO Registered VALUES(?, ?)", (m.text, credentials[0]))
@@ -131,8 +130,7 @@ def removeme(m):
 def rm(m):
     global f, gen_markup
     dirs = f.execute("SELECT * FROM SiteAlert WHERE name=?", (m.text,)).fetchall()
-    l = len(dirs)
-    if l > 0:
+    if len(dirs) > 0:
         credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
         f.execute("DELETE FROM Registered WHERE mail=? AND name=?", (credentials[0], m.text)).fetchall()
         tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
