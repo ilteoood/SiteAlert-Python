@@ -1,42 +1,30 @@
 __author__ = 'iLTeoooD'
 
-import sys
-import sqlite3
-import os
-import re
 from io import StringIO
-from os.path import expanduser
 
-import telebot
 from telebot import types
 
-import SiteAlert
+from SiteAlert import *
 
-TOKEN = 'YOUR TOKEN HERE'
-db = expanduser("~") + os.sep + "SiteAlert.db"
+TOKEN = os.environ['SITE_ALERT_TOKEN']
+site_alert = SiteAlert()
 leng = ""
-f = sqlite3.connect(db, check_same_thread=False)
 Array = {}
 gen_markup = types.ReplyKeyboardHide(selective=False)
 wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/unregister - Delete your registration\n/link - Print the link associated to a website\n/mailoff - Disable mail notification\n/mailon - Reverse action\n/telegramoff - Disable telegram notification\n/telegramon - Reverse action\n/help - Print help message"
+tb = telebot.TeleBot(TOKEN)
 
 
 def overrideStdout(funcName, msg, credentials, nameSite="", link=""):
-    global f
     old_stdout = sys.stdout
     result = StringIO()
     sys.stdout = result
     if funcName == "show":
-        dirs = f.execute("SELECT name FROM SiteAlert ORDER BY name COLLATE NOCASE").fetchall()
-        leng = len(dirs)
-        SiteAlert.displaySites(dirs, leng)
+        site_alert.display_sites()
     elif funcName == "check":
-        SiteAlert.addSite(f, nameSite, link, credentials[0], msg.chat.id)
+        site_alert.add_site(nameSite, link, credentials[0], msg.chat.id)
     sys.stdout = old_stdout
     return result.getvalue()
-
-
-tb = telebot.TeleBot(TOKEN)
 
 
 @tb.message_handler(commands=['ping'])
@@ -51,8 +39,7 @@ def show(m):
 
 @tb.message_handler(commands=['check'])
 def check(m):
-    global f
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
     if credentials is not None:
         msg = tb.send_message(m.chat.id, "Ok, how we should call it?")
         tb.register_next_step_handler(msg, ck1)
@@ -71,7 +58,7 @@ def ck1(m):
 
 def ck2(m):
     if not m.text.startswith("/"):
-        credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+        credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
         tb.send_message(m.chat.id, overrideStdout("check", m, credentials, Array[m.chat.id], m.text))
         del Array[m.chat.id]
     else:
@@ -80,15 +67,14 @@ def ck2(m):
 
 @tb.message_handler(commands=['addme'])
 def addme(m):
-    global f
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
     if credentials is not None:
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        dirs = f.execute(
+        sites = site_alert.execute_fetch_all(
             "SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = ? ORDER BY name COLLATE NOCASE",
-            (m.chat.id,)).fetchall()
-        for dir in dirs:
-            markup.add(dir[0])
+            (m.chat.id,))
+        for site in sites:
+            markup.add(site[0])
         msg = tb.send_message(m.chat.id, "Ok, to...?", reply_markup=markup)
         tb.register_next_step_handler(msg, am)
     else:
@@ -96,31 +82,28 @@ def addme(m):
 
 
 def am(m):
-    global f, gen_markup
-    dirs = f.execute("SELECT * FROM SiteAlert WHERE name=?", (m.text,)).fetchall()
-    if len(dirs) > 0:
-        credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    sites = site_alert.execute_fetch_all("SELECT * FROM SiteAlert WHERE name=?", (m.text,))
+    if len(sites) > 0:
+        credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
         try:
-            f.execute("INSERT INTO Registered VALUES(?, ?)", (m.text, credentials[0]))
+            site_alert.execute_query("INSERT INTO Registered VALUES(?, ?)", (m.text, credentials[0]))
             tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
         except sqlite3.IntegrityError:
             tb.send_message(m.chat.id, "You are already registered to this site!", reply_markup=gen_markup)
-        f.commit()
     elif not m.text.startswith("/"):
         tb.send_message(m.chat.id, "Invalid input.")
 
 
 @tb.message_handler(commands=['removeme'])
 def removeme(m):
-    global f
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
     if credentials is not None:
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        dirs = f.execute(
+        sites = site_alert.execute_fetch_all(
             "SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = ? ORDER BY name COLLATE NOCASE",
-            (m.chat.id,)).fetchall()
-        for dir in dirs:
-            markup.add(dir[0])
+            (m.chat.id,))
+        for site in sites:
+            markup.add(site[0])
         msg = tb.send_message(m.chat.id, "Ok, from...?", reply_markup=markup)
         tb.register_next_step_handler(msg, rm)
     else:
@@ -128,21 +111,18 @@ def removeme(m):
 
 
 def rm(m):
-    global f, gen_markup
-    dirs = f.execute("SELECT * FROM SiteAlert WHERE name=?", (m.text,)).fetchall()
-    if len(dirs) > 0:
-        credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
-        f.execute("DELETE FROM Registered WHERE mail=? AND name=?", (credentials[0], m.text)).fetchall()
+    sites = site_alert.execute_fetch_all("SELECT * FROM SiteAlert WHERE name=?", (m.text,))
+    if len(sites) > 0:
+        credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
+        site_alert.execute_query("DELETE FROM Registered WHERE mail=? AND name=?", (credentials[0], m.text))
         tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
-        f.commit()
     elif not m.text.startswith("/"):
         tb.send_message(m.chat.id, "Invalid input.")
 
 
 @tb.message_handler(commands=['register'])
 def register(m):
-    global f
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
     if credentials is None:
         msg = tb.send_message(m.chat.id, "Tell me your e-mail: ")
         tb.register_next_step_handler(msg, reg)
@@ -151,27 +131,26 @@ def register(m):
 
 
 def reg(m):
-    global f
     if re.match("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", m.text) is not None:
-        f.execute("INSERT INTO Users VALUES(?,?,'True','True')", (m.text, m.chat.id)).fetchall()
+        site_alert.execute_query("INSERT INTO Users VALUES(?,?,'True','True')", (m.text, m.chat.id))
         tb.send_message(m.chat.id, "Action completed successfully!")
-        f.commit()
     else:
         tb.send_message(m.chat.id, "Invalid e-mail.")
 
 
 @tb.message_handler(commands=['registered'])
 def registered(m):
-    global f
     i = 1
-    credentials = f.execute("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,)).fetchone()
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
     if credentials is not None:
         mymsg = "You have registered this e-mail: " + credentials[0] + "\nYour notification status is:\nE-mail: "
-        status = f.execute("SELECT mailnotification FROM Users WHERE mail = ?", (credentials[0],)).fetchone()
+        status = site_alert.execute_fetch_all("SELECT mailnotification FROM Users WHERE mail = ?", (credentials[0],))[
+            0]
         mymsg += status[0] + "\nTelegram: "
-        status = f.execute("SELECT telegramnotification FROM Users WHERE mail = ?", (credentials[0],)).fetchone()
+        status = \
+            site_alert.execute_fetch_all("SELECT telegramnotification FROM Users WHERE mail = ?", (credentials[0],))[0]
         mymsg += status[0] + "\nYou are registered to:"
-        for site in f.execute("SELECT name FROM Registered WHERE mail = ?", (credentials[0],)).fetchall():
+        for site in site_alert.execute_fetch_all("SELECT name FROM Registered WHERE mail = ?", (credentials[0],)):
             mymsg = mymsg + "\n" + str(i) + ") " + site[0]
             i += 1
         tb.send_message(m.chat.id, mymsg)
@@ -181,19 +160,17 @@ def registered(m):
 
 @tb.message_handler(commands=['link'])
 def link(m):
-    global f
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    dirs = f.execute("SELECT name FROM SiteAlert ORDER BY name COLLATE NOCASE").fetchall()
-    for dir in dirs:
-        markup.add(dir[0])
+    sites = site_alert.execute_fetch_all("SELECT name FROM SiteAlert ORDER BY name COLLATE NOCASE", ())
+    for site in sites:
+        markup.add(site[0])
     msg = tb.send_message(m.chat.id, "Of which site?", reply_markup=markup)
     tb.register_next_step_handler(msg, lk)
 
 
 def lk(m):
-    global gen_markup
     try:
-        link = f.execute("SELECT link FROM SiteAlert WHERE name = ?", (m.text,)).fetchone()
+        link = site_alert.execute_fetch_all("SELECT link FROM SiteAlert WHERE name = ?", (m.text,))[0]
         tb.send_message(m.chat.id, "To " + m.text + " corresponds: " + link[0], reply_markup=gen_markup)
     except Exception:
         tb.send_message(m.chat.id, "Invalid link.", reply_markup=gen_markup)
@@ -201,12 +178,10 @@ def lk(m):
 
 @tb.message_handler(commands=['unregister'])
 def unregister(m):
-    global gen_markup, f
-    mail = f.execute("SELECT mail FROM Users WHERE telegram = ?", (m.chat.id,)).fetchone()
+    mail = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram = ?", (m.chat.id,))[0]
     if mail is not None:
-        f.execute("DELETE FROM Users WHERE mail = ?", (mail[0],))
-        f.execute("DELETE FROM Registered WHERE mail = ?", (mail[0],))
-        f.commit()
+        site_alert.execute_query("DELETE FROM Users WHERE mail = ?", (mail[0],))
+        site_alert.execute_query("DELETE FROM Registered WHERE mail = ?", (mail[0],))
         tb.send_message(m.chat.id, "Action completed successfully!", reply_markup=gen_markup)
     else:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -214,10 +189,8 @@ def unregister(m):
 
 @tb.message_handler(commands=['mailoff'])
 def mailoff(m):
-    global f
     try:
-        f.execute("UPDATE Users SET mailnotification = 'False' WHERE telegram = ?", (m.chat.id,))
-        f.commit()
+        site_alert.execute_query("UPDATE Users SET mailnotification = 'False' WHERE telegram = ?", (m.chat.id,))
         tb.send_message(m.chat.id, "Action completed successfully!")
     except sqlite3.IntegrityError:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -225,10 +198,8 @@ def mailoff(m):
 
 @tb.message_handler(commands=['mailon'])
 def mailon(m):
-    global f
     try:
-        f.execute("UPDATE Users SET mailnotification = 'True' WHERE telegram = ?", (m.chat.id,))
-        f.commit()
+        site_alert.execute_query("UPDATE Users SET mailnotification = 'True' WHERE telegram = ?", (m.chat.id,))
         tb.send_message(m.chat.id, "Action completed successfully!")
     except sqlite3.IntegrityError:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -236,10 +207,8 @@ def mailon(m):
 
 @tb.message_handler(commands=['telegramoff'])
 def telegramoff(m):
-    global f
     try:
-        f.execute("UPDATE Users SET telegramnotification = 'False' WHERE telegram = ?", (m.chat.id,))
-        f.commit()
+        site_alert.execute_query("UPDATE Users SET telegramnotification = 'False' WHERE telegram = ?", (m.chat.id,))
         tb.send_message(m.chat.id, "Action completed successfully!")
     except sqlite3.IntegrityError:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -247,10 +216,8 @@ def telegramoff(m):
 
 @tb.message_handler(commands=['telegramon'])
 def telegramon(m):
-    global f
     try:
-        f.execute("UPDATE Users SET telegramnotification = 'True' WHERE telegram = ?", (m.chat.id,))
-        f.commit()
+        site_alert.execute_query("UPDATE Users SET telegramnotification = 'True' WHERE telegram = ?", (m.chat.id,))
         tb.send_message(m.chat.id, "Action completed successfully!")
     except sqlite3.IntegrityError:
         tb.send_message(m.chat.id, "You must be registered.\nUse /register")
@@ -258,7 +225,6 @@ def telegramon(m):
 
 @tb.message_handler(commands=['cancel'])
 def cancel(m):
-    global gen_markup
     tb.send_message(m.chat.id, "Ok, I forgot everything!", reply_markup=gen_markup)
 
 

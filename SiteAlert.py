@@ -25,223 +25,240 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ========================================================================================================================
 """
 __author__ = 'iLTeoooD'
-import urllib.request
 import hashlib
-import sqlite3
 import os
-import smtplib
-import time
-import sys
 import platform
-import socket
 import re
+import smtplib
+import socket
+import sqlite3
+import sys
+import time
+import urllib.request
 from os.path import expanduser
 
 import telebot
 from bs4 import BeautifulSoup
 
-db = expanduser("~") + os.sep + "SiteAlert.db"
-header = [('User-Agent',
-           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'),
-          ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
-          ('Accept-Charset', 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'),
-          ('Accept-Encoding', 'none'),
-          ('Accept-Language', 'en-US,en;q=0.8'),
-          ('Connection', 'keep-alive')]
-TOKEN = 'YOUR TOKEN HERE'
-MAIL = 'YOUR MAIL HERE'
-PSW = 'YOUR PASSWORD HERE'
-tb = telebot.TeleBot(TOKEN)
+
+class SiteAlert:
+    def __init__(self):
+        self.__db = expanduser("~") + os.sep + "SiteAlert.db"
+        if not os.path.isfile(self.__db):
+            print("[WARNING]: No db found, creating a new one.")
+            connection = sqlite3.connect(self.__db)
+            connection.execute(
+                "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
+            connection.execute(
+                "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
+            connection.execute(
+                "CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL UNIQUE, 'mailnotification' BOOLEAN NOT NULL DEFAULT TRUE, 'telegramnotification' BOOLEAN NOT NULL DEFAULT TRUE, PRIMARY KEY (mail));")
+            connection.close()
+        self.__connection = sqlite3.connect(self.__db, check_same_thread=False)
+        self.__header = [('User-Agent',
+                          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'),
+                         ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+                         ('Accept-Charset', 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'),
+                         ('Accept-Encoding', 'none'),
+                         ('Accept-Language', 'en-US,en;q=0.8'),
+                         ('Connection', 'keep-alive')]
+        self.__TOKEN = os.environ['SITE_ALERT_TOKEN']
+        self.__MAIL = os.environ['SITE_ALERT_MAIL']
+        self.__PSW = os.environ['SITE_ALERT_PASSWORD']
+        self.__tb = telebot.TeleBot(self.__TOKEN)
+        self.saved_on_db()
+
+    def display_sites(self):
+        self.saved_on_db()
+        leng = len(self.__sites)
+        if leng != 0:
+            i = 1
+            for site in self.__sites:
+                print(str(i) + ") " + site[0])
+                i += 1
+        else:
+            print("You haven't checked any site!")
+
+    def clean_db(self):
+        nameSite = self.execute_fetch_all(
+            "SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered GROUP BY name", ())
+        for name in nameSite:
+            print("Removing \"%s\"..." % (name))
+            self.execute_query("DELETE FROM SiteAlert WHERE name = ?", (name[0],))
+
+    def __std_url(self, site):
+        if not site.startswith("http://") and not site.startswith("https://"):
+            site = "http://" + site
+        return site
+
+    def __url_encode(self, read):
+        read = BeautifulSoup(read, "html.parser")
+        read = re.sub("<!--[\s\S]*?-->", "", read.get_text())
+        read = re.sub("(?s)/\\*.*?\\*/", "", read)
+        return hashlib.md5(bytes(read, 'utf-8')).hexdigest()
+
+    def __save_file(self, nameSite, link, mail, telegram, hash):
+        try:
+            self.execute_query("INSERT INTO SiteAlert (name,link,hash) VALUES (?,?,?)", (
+                nameSite, link, hash))
+            mail = mail.split(";")
+            for m in mail:
+                self.execute_query("INSERT INTO Registered (name, mail) VALUES (?,?)", (
+                    nameSite, m))
+            print("Site saved correctly!")
+        except sqlite3.IntegrityError:
+            self.execute_query("UPDATE SiteAlert SET hash=? WHERE name=?", (hash, nameSite))
+            print("Already exist a site with this credentials.")
+
+    def add_site(self, nameSite, link, mail='', telegram=''):
+        if link == "" or nameSite == "":
+            link = input("Insert the link for the site: ")
+            nameSite = input("Insert a name for the site: ")
+            mail = input(
+                "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
+        try:
+            link = self.__std_url(link)
+            urli = urllib.request.build_opener()
+            urli.addheaders = self.__header
+            urli = urli.open(link, timeout=10.0)
+            responseCode = urli.getcode()
+            if responseCode == 200:
+                self.__save_file(nameSite, link, mail, telegram, self.__url_encode(urli.read()))
+            elif responseCode == 404:
+                print("This page doesn't exist!")
+            else:
+                print("Generic error.")
+        except urllib.request.URLError:
+            print("There is an error with the link.")
+        except ConnectionResetError:
+            print("[ERROR]: Connection reset by peer: ")
+        except socket.timeout:
+            print("[ERROR]: Connection timeout")
+
+    def __send_mail(self, nameSite, link):
+        server = smtplib.SMTP("smtp.gmail.com:587")
+        server.starttls()
+        try:
+            server.login(self.__MAIL, self.__PSW)
+            subj = "The site \"" + nameSite + "\" has been changed!"
+            msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
+            mail = self.execute_fetch_all(
+                "SELECT Registered.mail FROM Users, Registered WHERE Registered.mail = Users.mail AND mailnotification = 'True' AND name=?",
+                (nameSite,))
+            for address in mail:
+                try:
+                    server.sendmail(self.__MAIL, address, msg)
+                except smtplib.SMTPRecipientsRefused:
+                    print("Error with this e-mail destination address: " + address)
+            server.close()
+            telegram = self.execute_fetch_all(
+                "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=? AND Users.mail = Registered.mail",
+                (nameSite,))
+            for t in telegram:
+                try:
+                    self.__tb.send_message(t[0], subj + "\nLink: " + link)
+                except telebot.apihelper.ApiException:
+                    print("Bot kicked from " + t[0], ", removing from DB...")
+                    self.execute_query(
+                        "DELETE FROM Registered WHERE mail = (SELECT mail FROM Users WHERE telegram = ?)",
+                        (t[0],))
+                    self.execute_query("DELETE FROM Users WHERE telegram = ?", (t[0],))
+        except smtplib.SMTPAuthenticationError:
+            print("Error in the login process")
+
+    def check_site(self):
+        self.saved_on_db()
+        if len(self.__sites) > 0:
+            for site in self.__sites:
+                site = site[0]
+                query = self.execute_fetch_all("SELECT hash,link FROM SiteAlert WHERE name=?", (site,))[0]
+                hash = query[0]
+                link = query[1]
+                urli = urllib.request.build_opener()
+                urli.addheaders = self.__header
+                try:
+                    urli = urli.open(link, timeout=10.0)
+                    if hash == self.__url_encode(urli.read()):
+                        print("The site \"" + site + "\" hasn't been changed!")
+                    else:
+                        print("The site \"" + site + "\" has been changed!")
+                        self.add_site(site, link, "")
+                        self.__send_mail(site, link)
+                except urllib.error.URLError:
+                    print("[ERROR]: Network error: " + site)
+                except ConnectionResetError:
+                    print("[ERROR]: Connection reset by peer: " + site)
+                except socket.timeout:
+                    print("[ERROR]: Connection timeout: " + site)
+
+        else:
+            print("You haven't checked any site.")
+            return True
+        return False
+
+    def execute_query(self, query, parameters):
+        self.__connection.execute(query, parameters)
+        self.__connection.commit()
+
+    def execute_fetch_all(self, query, parameters):
+        saved_sites = self.__connection.execute(query, parameters).fetchall()
+        self.__connection.commit()
+        return saved_sites
+
+    def saved_on_db(self):
+        self.__sites = self.execute_fetch_all("SELECT name FROM SiteAlert", ())
+        return self.__sites
+
+    def number_req(self):
+        s = -1
+        self.display_sites()
+        while s <= 0 or s > len(self.__sites):
+            print("Number of the site: ", )
+            try:
+                s = int(input())
+            except ValueError:
+                s = -1
+        return s
+
+    def close_connection(self):
+        self.__connection.close()
+
+    def delete_site(self, name):
+        self.execute_query("DELETE FROM SiteAlert WHERE name=?", (name,))
+        self.execute_query("DELETE FROM Registered WHERE name=?", (name,))
 
 
-def clearScreen():
+def clear_screen():
     if platform.system() == "Windows":
         os.system("cls")
     else:
         os.system("clear")
 
 
-def visualizeMenu():
-    clearScreen()
+def display_menu():
+    clear_screen()
     print(
         "What do you want to do?\n1) Display sites\n2) Add new site to check\n3) Fetch site\n4) Check sites\n5) Add e-mail to notification\n6) Remove e-mail from notification\n7) Delete a site\n8) Clean database\n9) Exit")
 
 
 def choice():
-    clearScreen()
+    clear_screen()
     try:
         x = -1
         while not 1 <= x <= 9:
             if x != 9:
-                visualizeMenu()
+                display_menu()
             x = int(input())
         return x
     except ValueError:
         return 9
 
 
-def displaySites(dirs, leng):
-    if leng != 0:
-        i = 1
-        for dir in dirs:
-            print(str(i) + ") " + dir[0])
-            i += 1
-    else:
-        print("You haven't checked any site!")
-
-
-def cleanDB(f):
-    nameSite = f.execute("SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered GROUP BY name").fetchall()
-    for name in nameSite:
-        print("Removing %s..." % (name))
-        f.execute("DELETE FROM SiteAlert WHERE name = ?", (name[0],))
-    f.commit()
-
-
-def stdURL(site):
-    if not site.startswith("http://") and not site.startswith("https://"):
-        site = "http://" + site
-    return site
-
-
-def URLEncode(read):
-    read = BeautifulSoup(read, "html.parser")
-    read = re.sub("<!--[\s\S]*?-->", "", read.get_text())
-    read = re.sub("(?s)/\\*.*?\\*/", "", read)
-    return hashlib.md5(bytes(read, 'utf-8')).hexdigest()
-
-
-def saveFile(f, nameSite, link, mail, telegram, hash):
-    try:
-        f.execute("INSERT INTO SiteAlert (name,link,hash) VALUES (?,?,?)", (
-            nameSite, link, hash))
-        mail = mail.split(";");
-        for m in mail:
-            f.execute("INSERT INTO Registered (name, mail) VALUES (?,?)", (
-                nameSite, m))
-        print("Site saved correctly!")
-    except sqlite3.IntegrityError:
-        f.execute("UPDATE SiteAlert SET hash=? WHERE name=?", (hash, nameSite))
-        print("Already exist a site with this credentials.")
-    f.commit()
-
-
-
-def addSite(f, nameSite, link, mail='', telegram=''):
-    if link == "" or nameSite == "":
-        link = input("Insert the link for the site: ")
-        nameSite = input("Insert a name for the site: ")
-        mail = input(
-            "Insert the email where you want to be informed (if you want to add other mail, separate them with \";\"): ")
-    try:
-        link = stdURL(link)
-        urli = urllib.request.build_opener()
-        urli.addheaders = header
-        urli = urli.open(link, timeout=10.0)
-        responseCode = urli.getcode()
-        if responseCode == 200:
-            saveFile(f, nameSite, link, mail, telegram, URLEncode(urli.read()))
-        elif responseCode == 404:
-            print("This page doesn't exist!")
-        else:
-            print("Generic error.")
-    except urllib.request.URLError:
-        print("There is an error with the link.")
-    except ConnectionResetError:
-        print("[ERROR]: Connection reset by peer: ")
-    except socket.timeout:
-        print("[ERROR]: Connection timeout")
-
-
-def sendMail(f, nameSite, link):
-    global MAIL, PSW
-    server = smtplib.SMTP("smtp.gmail.com:587")
-    server.starttls()
-    try:
-        server.login(MAIL, PSW)
-        subj = "The site \"" + nameSite + "\" has been changed!"
-        msg = "Subject: " + subj + "\n" + subj + "\nLink: " + link
-        mail = f.execute(
-            "SELECT Registered.mail FROM Users, Registered WHERE Registered.mail = Users.mail AND mailnotification = 'True' AND name=?",
-            (nameSite,)).fetchall()
-        for address in mail:
-            try:
-                server.sendmail(MAIL, address, msg)
-            except smtplib.SMTPRecipientsRefused:
-                print("Error with this e-mail destination address: " + address)
-        server.close()
-        telegram = f.execute(
-            "SELECT telegram FROM Users, Registered WHERE telegramnotification = 'True' AND name=? AND Users.mail = Registered.mail",
-            (nameSite,)).fetchall()
-        for t in telegram:
-            try:
-                tb.send_message(t[0], subj + "\nLink: " + link)
-            except telebot.apihelper.ApiException:
-                print("Bot kicked from " + t[0], ", removing from DB...")
-                f.execute("DELETE FROM Registered WHERE mail = (SELECT mail FROM Users WHERE telegram = ?)", (t[0],))
-                f.execute("DELETE FROM Users WHERE telegram = ?", (t[0],))
-                f.commit()
-    except smtplib.SMTPAuthenticationError:
-        print("Error in the login process")
-
-
-def checkSite(f, dirs):
-    if len(dirs) > 0:
-        for dir in dirs:
-            dir = dir[0]
-            query = f.execute("SELECT hash,link FROM SiteAlert WHERE name=\"" + dir + "\"").fetchone()
-            hash = query[0]
-            link = query[1]
-            urli = urllib.request.build_opener()
-            urli.addheaders = header
-            try:
-                urli = urli.open(link, timeout=10.0)
-                if hash == URLEncode(urli.read()):
-                    print("The site \"" + dir + "\" hasn't been changed!")
-                else:
-                    print("The site \"" + dir + "\" has been changed!")
-                    addSite(f, dir, link, "")
-                    sendMail(f, dir, link)
-            except urllib.error.URLError:
-                print("[ERROR]: Network error: " + dir)
-            except ConnectionResetError:
-                print("[ERROR]: Connection reset by peer: " + dir)
-            except socket.timeout:
-                print("[ERROR]: Connection timeout: " + dir)
-
-    else:
-        print("You haven't checked any site.")
-        return True
-    return False
-
-
-def numberReq(leng, dirs):
-    s = -1
-    displaySites(dirs, leng)
-    while s <= 0 or s > leng:
-        print("Number of the site: ", )
-        s = int(input())
-    return s
-
-
 def main():
     c = 1
     n = len(sys.argv)
-    x = 0
-    if not os.path.isfile(db):
-        print("[WARNING]: No db found, creating a new one.")
-        f = sqlite3.connect(db)
-        f.execute(
-            "CREATE TABLE `SiteAlert` (`name` TEXT NOT NULL UNIQUE,`link` TEXT NOT NULL,`hash` TEXT NOT NULL,PRIMARY KEY(link));")
-        f.execute(
-            "CREATE TABLE 'Registered'('name' TEXT NOT NULL,'mail' TEXT NOT NULL, PRIMARY KEY(name, mail));")
-        f.execute(
-            "CREATE TABLE Users ('mail' TEXT NOT NULL, 'telegram' TEXT NOT NULL UNIQUE, 'mailnotification' BOOLEAN NOT NULL DEFAULT TRUE, 'telegramnotification' BOOLEAN NOT NULL DEFAULT TRUE, PRIMARY KEY (mail));")
-        f.close()
-    f = sqlite3.connect(db)
+    site_alert = SiteAlert()
     while True:
-        dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
-        leng = len(dirs)
         s = ""
         if c < n:
             arg = sys.argv[c]
@@ -252,21 +269,22 @@ def main():
             c += 1
         else:
             x = choice()
-        clearScreen()
+        clear_screen()
         if x == 0:
             print(
                 "Usage:\n-a -> add a new site\n-am -> add new e-mail address\n-b -> continuous check\n-c -> check once\n-cl -> clean database\n-d -> delete a site\n-e -> exit\n-h -> print this help\n-r -> remove e-mail address\n-s -> show the list of the sites")
         elif x == 1:
-            displaySites(dirs, leng)
+            site_alert.display_sites()
         elif x == 2:
-            addSite(f, "", "", "")
+            site_alert.add_site("", "")
         elif x == 3:
-            if leng != 0:
+            saved = site_alert.saved_on_db()
+            if len(saved) != 0:
                 print("Write the number of the site that you want to fetch.")
-                nameSite = dirs[numberReq(leng, dirs) - 1][0]
-                query = f.execute("SELECT link FROM SiteAlert WHERE name=\"" + nameSite + "\"").fetchone()
+                nameSite = saved[site_alert.number_req() - 1][0]
+                query = site_alert.execute_fetch_all("SELECT link FROM SiteAlert WHERE name=?", (nameSite,))[0]
                 link = query[0]
-                addSite(f, nameSite, link)
+                site_alert.add_site(nameSite, link)
             else:
                 print("You haven't checked any site.")
         elif x == 4:
@@ -279,42 +297,39 @@ def main():
                     else:
                         s = input("Wrong input, do you want to check it continually? (Y/n)")
             while True:
-                if checkSite(f, dirs) or s != "y":
-                    s = "n"
+                if site_alert.check_site() or s != "y":
                     break
                 else:
                     time.sleep(30)
-                    cleanDB(f)
-                    dirs = f.execute("SELECT name FROM SiteAlert").fetchall()
+                    site_alert.clean_db()
         elif x == 5 or x == 6:
-            if leng != 0:
+            saved = site_alert.saved_on_db()
+            if len(saved) != 0:
                 print("Write the number of the site.")
-                nameSite = dirs[numberReq(leng, dirs) - 1][0]
+                nameSite = saved[site_alert.number_req() - 1][0]
                 mail = input("Insert e-mail: ")
                 if x == 5:
-                    f.execute("INSERT INTO Registered VALUES(?, ?)", (nameSite, mail)).fetchall()
+                    site_alert.execute_query("INSERT INTO Registered VALUES(?, ?)", (nameSite, mail))
                 else:
-                    f.execute("DELETE FROM Registered WHERE mail=? AND name=?", (mail, nameSite)).fetchall()
-                f.commit()
+                    site_alert.execute_query("DELETE FROM Registered WHERE mail=? AND name=?", (mail, nameSite))
                 print("Action completed successfully!")
             else:
                 print("You haven't checked any site.")
         elif x == 7:
-            if leng != 0:
+            saved = site_alert.saved_on_db()
+            if len(saved) != 0:
                 print("Write the number of the site that you want to delete.")
-                s = numberReq(leng, dirs) - 1
-                f.execute("DELETE FROM SiteAlert WHERE name=\"" + dirs[s][0] + "\"")
-                f.execute("DELETE FROM Registered WHERE name=\"" + dirs[s][0] + "\"")
-                f.commit()
+                index = site_alert.number_req() - 1
+                site_alert.delete_site(saved[index][0])
                 print("Site deleted successfully!")
             else:
                 print("You haven't checked any site!")
         elif x == 8:
-            cleanDB(f)
+            site_alert.clean_db()
         elif x != 9:
             print("Unknown command: \"" + arg + "\"")
         if x == 9:
-            f.close()
+            site_alert.close_connection()
             sys.exit(0)
         input("Press enter to continue...")
 
