@@ -39,8 +39,8 @@ def show(m):
 
 @tb.message_handler(commands=['check'])
 def check(m):
-    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
-    if credentials is not None:
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
+    if len(credentials) > 0:
         msg = tb.send_message(m.chat.id, "Ok, how we should call it?")
         tb.register_next_step_handler(msg, ck1)
     else:
@@ -67,8 +67,8 @@ def ck2(m):
 
 @tb.message_handler(commands=['addme'])
 def addme(m):
-    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
-    if credentials is not None:
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
+    if len(credentials) > 0:
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         sites = site_alert.execute_fetch_all(
             "SELECT name FROM SiteAlert EXCEPT SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = ? ORDER BY name COLLATE NOCASE",
@@ -96,8 +96,8 @@ def am(m):
 
 @tb.message_handler(commands=['removeme'])
 def removeme(m):
-    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
-    if credentials is not None:
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
+    if len(credentials) > 0:
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         sites = site_alert.execute_fetch_all(
             "SELECT name FROM Registered, Users WHERE Registered.mail = Users.mail AND telegram = ? ORDER BY name COLLATE NOCASE",
@@ -122,8 +122,8 @@ def rm(m):
 
 @tb.message_handler(commands=['register'])
 def register(m):
-    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
-    if credentials is None:
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
+    if len(credentials) == 0:
         msg = tb.send_message(m.chat.id, "Tell me your e-mail: ")
         tb.register_next_step_handler(msg, reg)
     else:
@@ -141,8 +141,8 @@ def reg(m):
 @tb.message_handler(commands=['registered'])
 def registered(m):
     i = 1
-    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))[0]
-    if credentials is not None:
+    credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
+    if len(credentials) > 0:
         mymsg = "You have registered this e-mail: " + credentials[0] + "\nYour notification status is:\nE-mail: "
         status = site_alert.execute_fetch_all("SELECT mailnotification FROM Users WHERE mail = ?", (credentials[0],))[
             0]
