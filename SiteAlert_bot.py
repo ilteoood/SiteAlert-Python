@@ -10,7 +10,7 @@ TOKEN = os.environ['SITE_ALERT_TOKEN']
 site_alert = SiteAlert()
 leng = ""
 Array = {}
-gen_markup = types.ReplyKeyboardHide(selective=False)
+gen_markup = types.ReplyKeyboardRemove(selective=False)
 wlcm_msg = "!\nWelcome to @SiteAlert_bot.\nCommands available:\n/ping - Pong\n/show - Print the list of saved sites\n/check - Check new website\n/addme - Notify me on an already registered site\n/removeme - Reverse action\n/register - Register your email\n/registered - Check if you are alredy registered, and show your subscribed sites\n/unregister - Delete your registration\n/link - Print the link associated to a website\n/mailoff - Disable mail notification\n/mailon - Reverse action\n/telegramoff - Disable telegram notification\n/telegramon - Reverse action\n/help - Print help message"
 tb = telebot.TeleBot(TOKEN)
 
