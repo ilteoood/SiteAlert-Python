@@ -144,13 +144,12 @@ def registered(m):
     credentials = site_alert.execute_fetch_all("SELECT mail FROM Users WHERE telegram =?", (m.chat.id,))
     if len(credentials) > 0:
         mymsg = "You have registered this e-mail: " + credentials[0] + "\nYour notification status is:\nE-mail: "
-        status = site_alert.execute_fetch_all("SELECT mailnotification FROM Users WHERE mail = ?", (credentials[0],))[
-            0]
+        status = site_alert.execute_fetch_all("SELECT mailnotification FROM Users WHERE mail = ?", (credentials[0]))[0]
         mymsg += status[0] + "\nTelegram: "
         status = \
-            site_alert.execute_fetch_all("SELECT telegramnotification FROM Users WHERE mail = ?", (credentials[0],))[0]
+            site_alert.execute_fetch_all("SELECT telegramnotification FROM Users WHERE mail = ?", (credentials[0]))[0]
         mymsg += status[0] + "\nYou are registered to:"
-        for site in site_alert.execute_fetch_all("SELECT name FROM Registered WHERE mail = ?", (credentials[0],)):
+        for site in site_alert.execute_fetch_all("SELECT name FROM Registered WHERE mail = ?", (credentials[0])):
             mymsg = mymsg + "\n" + str(i) + ") " + site[0]
             i += 1
         tb.send_message(m.chat.id, mymsg)
